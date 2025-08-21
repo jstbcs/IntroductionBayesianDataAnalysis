@@ -1,0 +1,74 @@
+---
+title: "Homework 0"
+author: "Shravan Vasishth"
+date: ""
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exercise 1
+
+Given a binomial random variable X, with probability of success $\theta = 0.6$, compute, for 10 trials (this is specified in R with size = 10):
+
+- $Prob(X\leq 6)$
+- $Prob(X\geq 4)$
+- $Prob(7 \leq  X \leq 9)$
+
+
+## Exercise 2
+
+Given a binomial random variable X, with probability of success $\theta = 0.5$, what is the quantile k such that $Prob(X\leq k) = 0.5$. The number of trials is 10.
+
+
+## Exercise 3
+
+Do the following 1000 times (hint: this can be done with a single command; in R, n refers to the number of experiments): 
+
+- Run an experiment with 10 trials from a binomial (probability of success 0.6). You should get the number of successes in 10 trials. If you do 1000 experiments, then you will get 1000 instances of the number of successes in each of the 1000 experiments. The command for running 1000 experiments:
+
+- Save the 1000 instances as an R object (say, successes).
+- Compute the variance of the successes vector (use the command var()).
+
+
+- Compute the variance of the number of successes analytically using the formula $n \theta (1-\theta)$ shown in the slides. Confirm that the two estimates (the one based on simulation and the one based on the analytical calculation) approximately match.
+
+
+- Plot the distribution of the number of successes for the 1000 experiments.
+
+
+# Exercise 4
+
+Given a normal random variable X with mean 500 and variance (not standard deviation!) $50^2$, compute
+
+- $Prob(X>550)$
+- $Prob(X<450)$
+- $Prob(450<X<550)$
+- $Prob(450\leq X\leq 550)$
+
+# Exercise 5
+
+Given a normal random variable X with mean 500 and variance $50^2$, 
+
+- what is the quantile q such that $Prob(X<q) = 0.80$?
+- what is the quantile q such that $Prob(X>q) = 0.30$?
+- what are the two quantiles q1 and q2 such that they are equidistant from the mean 500 and $Prob(q1<X<q2)=0.95$?
+
+
+# Exercise 6
+
+Do the following 1000 times:
+
+- Generate 100 data points from a normal distribution with mean 500 and variance
+$50^2$.
+- Each time, compute the mean of the 100 data points and save it in an object. Some R code to help you do this:
+
+- Confirm that the mean of the vector of means is close to 500.
+
+
+- Confirm that the standard deviation of the vector of means is approximately the analytically computed standard error $\frac{50}{\sqrt{100}}$. 
+
+
+- Plot the distribution of the means.

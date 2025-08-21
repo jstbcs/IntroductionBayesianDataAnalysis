@@ -1,6 +1,6 @@
 ---
-title: "HW 1 Solutions"
-author: "Shravan Vasishth"
+title: "Assignment 1 Solutions"
+author: "Julia Haaf & Nicle Cruz"
 date: ""
 output: pdf_document
 ---
