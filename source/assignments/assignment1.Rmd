@@ -1,0 +1,39 @@
+---
+title: "Assignment 1"
+author: "Julia Haaf and Nicole Cruz"
+date: ""
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Exercise 1
+
+The French mathematician Pierre-Simon Laplace (1749-1827) was the first person to show definitively that the proportion of female births in the French population was less then $0.5$, in the late 18th century, using a Bayesian analysis based on a uniform prior distribution. 
+
+Suppose you were doing a similar analysis but you had more definite prior beliefs about the ratio of male to female births. In particular, if $\theta$ represents the proportion of **female** births in a given population, you are willing to place a Beta(100,100) prior distribution on $\theta$.
+
+- Show that this prior implies that you are more than 95\% sure that $\theta$ is between $0.4$ and $0.6$, although you are ambivalent as to whether it is greater or less than $0.5$.
+
+- Now you observe that out of a random sample of $1,000$ births, $511$ are boys. Use `brms` to estimate the posterior distribution. What is your posterior probability that $\theta > 0.5$?
+
+# Exercise 2: Is cilantro soapy?
+
+```{r out.width = "65%", echo = F, fig.align='center'}
+knitr::include_graphics("src/cilantro.png")
+```
+
+We all know that cilantro (coriander) is a delicious herb that should be added to virtually any meal. However, there seems to be a minority of voices on the internet claiming that cilantro tastes like soap. We want to investigate the prevalence of this claim.
+
+i. Suppose we assume that about 25% of the broader (European) public are part of the tastes-like-soap population. Consequently, we pick a prior for the probability that any one person thinks cilantro tastes like soap, $\theta$, as $\theta \sim \mbox{Beta}(5, 15)$. Estimate the posterior distribution for three different samples: 1. 4 out of 50 participants think cilantro tastes like soap, 2. 40 out of 500 participants think cilantro tastes like soap, and 3. 400 out of 5000 participants think cilantro tastes like soap. Interpret the effect of sample size on the posterior.
+
+ii. Compare your results from i. to the results if you choose a different prior, $\theta \sim \mbox{Beta}(1 ,1)$. Interpret the differences.
+
+# Bonus Exercise 3 (in case you finish early and/or are bored)
+
+Here we apply Bayes' rule for the case of discrete events.
+
+Suppose that 1 in 1000 people in a population is expected to get HIV. Suppose a test is administered on a suspected HIV case, where the test has a true positive rate (the proportion of positives that are actually HIV positive) of 95\%  and true negative rate (the proportion of negatives are actually HIV negative) 98\%. 
+Use Bayes' theorem to find out the probability that a patient testing positive actually has HIV.

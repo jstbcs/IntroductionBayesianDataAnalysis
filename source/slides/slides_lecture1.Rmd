@@ -1,0 +1,1153 @@
+---
+title     : "<small>Introduction to Bayesian Data Analysis</small>"
+subtitle  : "Lecture 1"
+author    : "<br />Julia Haaf"
+date      : "<small>Summer 2025</small>"
+
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    self_contained: true
+    chakra: libs/remark-latest.min.js
+    css: ["src/xaringan-themer.css", "src/slides.css", "hygge"]
+    nature:
+      countIncrementalSlides: false
+header-includes:
+  - \usepackage{xcolor}
+---
+
+exclude: true
+
+```{r setup, included = FALSE}
+library("knitr")
+library(kableExtra)
+options(htmltools.dir.version = FALSE)
+opts_chunk$set(echo = FALSE, fig.align = "center")
+
+# remotes::install_github("gadenbuie/xaringanExtra")
+library("xaringanExtra")
+library("xaringanthemer")
+
+my_colors <- c("#495e8c", "#ef9ada")
+
+library("ggplot2")
+library(diagram)
+library(tidyverse)
+library(brms)
+```
+
+```{r extras-styling, include = FALSE}
+use_xaringan_extra(c("tile_view", "clipboard")) #, "broadcast", "webcam", "animate_css"
+
+# style_mono_light("#32475b")
+style_mono_accent(
+  base_color = my_colors[1]
+  # , title_slide_background_image = "src/uva.svg"
+  , header_font_google = google_font("Poppins")
+  , header_h1_font_size = "36pt"
+  , text_font_google = google_font("Open Sans")
+  , text_font_size = "20pt"
+  , text_color = "#3a3a3a"
+  , outfile = "src/xaringan-themer.css"
+)
+```
+
+```{r}
+add_overlay <- function(..., label = NULL, label_style = NULL) {
+  el <- list(...)
+  
+  y <- '<div id="overlay-highlight"'
+  if(length(el) > 0) {
+    y <- c(y, 'style="', glue::glue('{names(el)}:{el};'))
+  }
+  y <- c(y, '">')
+  
+  if(!is.null(label)) {
+    y <- c(y, glue::glue('<span" class="vertical-center"" style="{label_style}">{label}</span>'))
+  }
+  
+  knitr::asis_output(glue::glue_collapse(c(y, "</div>")))
+}
+```
+
+
+<script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.js"></script>
+<script type="module">
+import mediumZoom from 'https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.esm.js'
+
+const zoomDefault = mediumZoom('#zoom-default')
+const zoomMargin = mediumZoom('#zoom-margin', { margin: 45 })
+</script>
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  "HTML-CSS": {
+    scale: 150,
+  }
+});
+</script>
+
+---
+
+# Who are we?
+
+.pull-right-30[
+```{r out.width = "70%"}
+include_graphics("src/nicole_c.png")
+```
+
+```{r out.width = "70%"}
+include_graphics("src/JuliaH_01.jpg")
+```
+]
+
+- Dr. Nicole Cruz
+    + Postdoc, University of Potsdam
+
+<br>
+
+<br>
+
+- Dr. Julia Haaf
+    + Professor, University of Amsterdam
+
+---
+class: middle, center
+
+```{r out.width = "30%"}
+include_graphics("src/who.png")
+```
+
+# Who are you?
+
+---
+
+# Overview
+
+1. Statistical Modeling
+2. Bayesian Statistics
+    + An Example
+    + Prior
+    + Bayes's Theorem
+    + Posterior
+    + Estimation in `R`
+
+---
+layout:false
+
+### Inferential Statistics
+
+```{r, dev='png', dpi=500, fig.asp = 0.6, fig.width=9}
+par(cex=1.4, mar = rep(.5, 4))
+M  <- matrix(nrow = 4, ncol = 4, byrow = TRUE, data = 0)
+M[2, 1] <- "Specification"
+M[3, 2] <-  "Analysis"            
+M[4, 3] <- "Interpretation"
+
+col=c("lightskyblue1","thistle1","darkseagreen1","lightskyblue1")
+
+pos <- cbind (c(0.24, 0.26, 0.74, 0.76), c(0.8, 0.3, 0.3, 0.8))
+
+par(cex=1.4)
+pos <- cbind (c(0.22, 0.22, 0.78, 0.78), c(0.8, 0.2, 0.2, 0.8))
+
+pp <- plotmat(M, pos = pos, name = c("Theoretical\n Hypothesis", "Statistical\n Model", "Statistical\n Inference", "Inference regarding\n Theory"),box.col=col,arr.pos = .5,
+              lwd = 1, box.lwd = 2, cex.txt = 1, 
+              box.size = 0.17, box.type = "rect", box.prop = 0.3
+              , arr.type = "triangle"
+              , arr.lwd = 1.5
+              , dtext = .3
+              , curve = 0)
+```
+
+---
+layout: true
+
+### Statistical Models
+
+---
+
+.content-box-blue[
+.small[
+A statistical model is the mathematical representation of a series of statistical assumptions and relationships. Statistical models contain information about the generation of sample data from the population.
+]
+]
+
+--
+
+- Mathematical relationships between random variables and other non-random variables.
+--
+
+- Statistical model as “formal representation of a theory”.
+--
+
+- Statistical models represent the process of data generation.
+
+---
+
+Statistical model as assumptions about the population
+
+--
+
+$\rightarrow$ Statistical Model = Probability Distribution
+
+---
+
+#### Example: A single subject pressing a button repeatedly (Chapter 3.2.1)
+
+- Finger tapping task (for a review, see Hubel et al. 2013)
+- Procedure
+--
+
+  + blank screen (200 ms)
+--
+  + cross in the middle of a screen
+  + as soon as they see the cross, they tap on the space bar as fast as they can until the experiment is over (361 trials). 
+--
+
+- Dependent measure: Finger tapping times in milliseconds.
+--
+
+- Research question is: how long does it take for this particular subject to press a key?
+
+---
+
+#### Example: A single subject pressing a button repeatedly (Chapter 3.2.1)
+
+```{r, fig.asp = .6, fig.width=6}
+par(bty = "n", mgp = c(2, .7, 0), mar = c(4,4,.5,.5), cex = 1.1)
+x <- seq(65, 145, .1)
+plot(x, dnorm(x, 100, 15)
+     , type = "l"
+     , lwd = 3, col = "slateblue"
+     , ylab = "Probability Density", xlab = "Finger tapping time", axes = F)
+# lines(x, dnorm(x, 100, 15), lty = 2, col = adjustcolor(1, .5))
+axis(2, seq(0, .02, .01))
+axis(1, c(75, 125), labels = c("fast", "slow"))
+```
+
+--
+
+- **Modell:** $y \sim \text{Normal}(\mu, \sigma^2)$
+
+
+---
+class:inverse, center, middle
+layout:false
+
+# Bayesian Statistics
+
+---
+layout:true
+
+### An Example
+
+---
+
+.pull-right-45[
+```{r out.width = "85%"}
+include_graphics("src/frank5.jpeg")
+```
+
+]
+
+
+- This is Frank
+--
+
+- Frank enjoys eating, but he is somewhat picky
+--
+
+- We want to model the likelihood that Frank eats his food.
+
+---
+layout:true
+
+.pull-right-25[
+```{r out.width = "95%"}
+include_graphics("src/frank5.jpeg")
+```
+
+]
+
+### An Example
+
+---
+
+#### The Study
+
+- For 20 days (i.e., 40 meals), we observe whether Frank eats his food
+- Result: $x$ of 40 meals were eaten.
+
+--
+
+#### The Statistical Model?
+
+--
+
+- $Y \sim \mbox{Binomial}(N, \theta),$
+- $0 \leq \theta \leq 1, N = 40$
+
+---
+
+What is $\theta$?
+
+--
+
+#### Before Knowing the Data
+
+--
+
+$\theta$ could be 0.5.
+
+```{r, fig.asp=.6, fig.width=7}
+par(mar = c(3,3,0.5, 0.5))
+x=0:40
+m=dbinom(x,40,.5)
+par(cex=1.5,mgp=c(2,.7,0))
+plot(x,m,typ='h',xlab="Meals Eaten",ylab="Probability",ylim=c(0,.25), yaxt = "n")
+axis(2, seq(0, .3, .1))
+points(x,m,pch=19,cex=1.3,col='slateblue')
+```
+
+
+---
+
+What is $\theta$?
+
+#### Before Knowing the Data
+
+$\theta$ could be 0.9.
+
+```{r, fig.asp=.6, fig.width=7}
+par(mar = c(3,3,0.5, 0.5))
+x=0:40
+m=dbinom(x,40,.9)
+par(cex=1.5,mgp=c(2,.7,0))
+plot(x,m,typ='h',xlab="Meals Eaten",ylab="Probability",ylim=c(0,.25), yaxt = "n")
+axis(2, seq(0, .3, .1))
+points(x,m,pch=19,cex=1.3,col='slateblue')
+```
+
+
+---
+
+What is $\theta$?
+
+#### Before Knowing the Data
+
+$\theta$ could be 0.2.
+
+```{r, fig.asp=.6, fig.width=7}
+par(mar = c(3,3,0.5, 0.5))
+x=0:40
+m=dbinom(x,40,.2)
+par(cex=1.5,mgp=c(2,.7,0))
+plot(x,m,typ='h',xlab="Meals Eaten",ylab="Probability",ylim=c(0,.25), yaxt = "n")
+axis(2, seq(0, .3, .1))
+points(x,m,pch=19,cex=1.3,col='slateblue')
+```
+
+
+---
+
+What is $\theta$?
+
+#### Before Knowing the Data
+
+```{r, fig.asp=.6, fig.width=8}
+layout(matrix(1:4, ncol = 2, byrow = T))
+par(mar = c(3,3,0.5, 0.5))
+x=0:40
+m=dbinom(x,40,.2)
+par(cex=1,mgp=c(2,.7,0))
+plot(x,m,typ='h',xlab="Meals Eaten",ylab="Probability",ylim=c(0,.25), yaxt = "n")
+axis(2, seq(0, .3, .1))
+points(x,m,pch=19,cex=1.3,col='slateblue')
+legend("topleft", legend = expression(theta ~ "=" ~ 0.2), bty = "n")
+
+m=dbinom(x,40,.4)
+plot(x,m,typ='h',xlab="Meals Eaten",ylab="Probability",ylim=c(0,.25), yaxt = "n")
+axis(2, seq(0, .3, .1))
+points(x,m,pch=19,cex=1.3,col='slateblue')
+legend("topleft", legend = expression(theta ~ "=" ~ 0.4), bty = "n")
+
+m=dbinom(x,40,.6)
+plot(x,m,typ='h',xlab="Meals Eaten",ylab="Probability",ylim=c(0,.25), yaxt = "n")
+axis(2, seq(0, .3, .1))
+points(x,m,pch=19,cex=1.3,col='slateblue')
+legend("topleft", legend = expression(theta ~ "=" ~ 0.6), bty = "n")
+
+m=dbinom(x,40,.8)
+plot(x,m,typ='h',xlab="Meals Eaten",ylab="Probability",ylim=c(0,.25), yaxt = "n")
+axis(2, seq(0, .3, .1))
+points(x,m,pch=19,cex=1.3,col='slateblue')
+legend("topleft", legend = expression(theta ~ "=" ~ 0.8), bty = "n")
+```
+
+
+---
+layout:false
+
+### Parameters
+
+- In Bayesian Statistics, parameters are also random variables (just like data).
+--
+
+- This means that parameters in a statistical model also receive a probability distribution.
+--
+
+- The probability distribution of the parameter changes when we observe data.
+--
+
+- Before we observe data, the probability distribution of a parameter is called the *prior.*
+
+---
+layout: false
+class: inverse, middle, center
+
+
+# Prior
+
+---
+layout:true
+
+### Prior
+
+---
+
+.content-box-blue[
+.small[
+Definition: The prior distribution is an essential component of Bayesian inference. It represents the information about an uncertain parameter. This information is based on prior knowledge about plausible values of the parameter.
+
+]
+]
+
+```{r out.width = "35%"}
+include_graphics("src/PutAPriorOnIt.jpg")
+```
+
+
+---
+class:small-font
+
+.pull-right-25[
+```{r out.width = "95%"}
+include_graphics("src/PutAPriorOnIt.jpg")
+```
+
+]
+
+- Appropriate Distribution reflects the nature of the parameter
+    + discrete vs. continuous
+    + range: only positive values, only values between 0 and 1
+--
+- Knowledge and Uncertainty: The Prior reflects how much prior knowledge about a parameter is available.
+    + The more prior knowledge, the more informed the distribution
+    + i.e., the more possible parameter values are deemed implausible
+
+```{r, fig.asp = 0.3, out.width=450, dpi = 150}
+cols <- hcl(h = seq(15, 375
+                      , length = 4)
+              , l = 65, c = 100)[1:3]
+x <- seq(-3, 3, .001)
+y <- dnorm(x)
+y2 <- dnorm(x, sd = 0.3)
+y3 <- msm::dtnorm(x, lower = 0)
+
+par(mgp = c(2, .7, 0), mar = c(3,.5, .5, .5))
+layout(matrix(1:3, ncol = 3))
+plot(x, y, type = "l", lwd = 4, col = cols[1], ylim = c(0, 1.5), yaxt = "n", ylab = "", frame.plot = F)
+plot(x, y2, type = "l", lwd = 4, col = cols[2], ylim = c(0, 1.5), yaxt = "n", ylab = "", frame.plot = F)
+plot(x, y3, type = "l", lwd = 4, col = cols[3], ylim = c(0, 1.5), yaxt = "n", ylab = "", frame.plot = F)
+```
+
+
+---
+
+.pull-right-25[
+```{r out.width = "95%"}
+include_graphics("src/frank5.jpeg")
+```
+]
+
+- $Y \sim \mbox{Binomial}(N, \theta),$
+- $0 \leq \theta \leq 1, N = 40$
+- $\theta \sim ???$
+--
+
+- Beta distribution: $\text{Beta}(\alpha, \beta)$
+
+```{r, fig.asp = 0.6, out.width=450, dpi = 150}
+par(mar = c(4,4,.5,.5), mgp = c(2, .7, 0), cex = 1.2)
+x <- seq(0, 1, .01)
+plot(x, dbeta(x, 4, 4), type = "l", col = "slateblue", lwd = 4
+     , ylab = "Probability Density", xlab = expression(theta), ylim = c(0, 4.5))
+lines(x, dbeta(x, 1, 1), lwd = 4, lty = 2, col = "darkgray")
+lines(x, dbeta(x, 6, 2), lwd = 4, lty = 3, col = "darkgray")
+lines(x, dbeta(x, 1, 4), lwd = 4, lty = 4, col = "darkgray")
+```
+
+---
+layout:false
+
+### The Statistical Model
+
+- $Y \sim \mbox{Binomial}(40, \theta),$
+- $\theta \sim \text{Beta}(4, 4)$
+
+```{r, fig.asp = 0.5, out.width=650, dpi = 150}
+layout(matrix(1:2, ncol = 2))
+par(mar = c(4,4,4,.5), mgp = c(2, .7, 0), cex = 1.2)
+x <- seq(0, 1, .01)
+plot(x, dbeta(x, 4, 4), type = "l", col = "slateblue", lwd = 4
+     , ylab = "Probability Density", xlab = expression(theta), ylim = c(0, 4.5), main = "Prior", bty = "n")
+
+like=function(val,y) dbinom(y,40,val)
+intgrand=function(val,a,b,y) like(val,y)*dbeta(val,a,b)
+
+margPred=function(y,a,b)
+integrate(intgrand,lower=0,upper=1,a=a,b=b,y=y)$value
+
+m3=1:41
+for (y in 1:41) m3[y]=margPred(y-1,4,4)
+
+plot(0:40,m3,typ='h',xlab="Meals Eaten",ylab="Probability",ylim=c(0,.1), yaxt = "n"
+     , main = "Prediction", bty = "n")
+axis(2, seq(0, .1, .025))
+points(0:40,m3,pch=19,cex=0.7,col='slateblue')
+# points(0:40,dbinom(0:40, 40, .5),pch=1,cex=1.3,col='darkgray')
+```
+
+---
+
+### Prediction for Data
+
+```{r, fig.asp = 0.6, out.width=550, dpi = 150}
+par(mar = c(4,4,.5,.5), mgp = c(2, .7, 0), cex = 1.5)
+plot(0:40,m3,typ='h',xlab="Meals Eaten",ylab="Probability",ylim=c(0,.15), yaxt = "n", bty = "n")
+axis(2, seq(0, .15, .05))
+points(0:40,m3,pch=19,cex=1,col='slateblue')
+points(0:40,dbinom(0:40, 40, .5),pch=1,cex=1.0,col='gray30')
+legend("topright", legend = c(expression(theta ~ "= 0.5"), expression(theta ~ "~ Beta(4, 4)"))
+       , pch = c(1, 19), col = c("gray30", "slateblue"), bty = "n")
+```
+
+
+--
+
+The prior distribution represents the uncertainty about the actual parameter value in the population.
+
+---
+
+### Observation of Data
+
+```{r, fig.asp = 0.6, out.width=550, dpi = 150}
+par(mar = c(4,4,.5,.5), mgp = c(2, .7, 0), cex = 1.5)
+plot(0:40,m3,typ='h',xlab="Meals Eaten",ylab="Probability",ylim=c(0,.15), yaxt = "n", bty = "n")
+axis(2, seq(0, .15, .05))
+points(0:40,m3,pch=19,cex=1.0,col='slateblue')
+points(32, m3[33], col = "red", pch = 19, cex = 1.7)
+```
+
+
+What happens when we observe data? $\rightarrow x = 32$
+
+---
+layout: false
+class: inverse, middle, center
+
+# From Prior to Posterior
+
+---
+layout:true
+
+### From Prior to Posterior
+
+---
+
+- When we observe data, we can update the distribution of the parameter
+--
+
+- The Prior distribution then becomes the Posterior distribution, where the new information from the data is integrated.
+--
+
+```{r, fig.asp = 0.6, out.width=550, dpi = 150}
+par(mar = c(4,4,.5,.5), mgp = c(2, .7, 0), cex = 1.2)
+x <- seq(0, 1, .01)
+plot(x, dbeta(x, 4, 4)
+     , type = "l", col = adjustcolor("slateblue", .7)
+     , lwd = 4
+     , ylab = "Probability Density", xlab = expression(theta)
+     , ylim = c(0, 7)
+     , lty = 2, bty = "n")
+lines(x, dbeta(x, 36, 12), col = "darkblue"
+      , lwd = 4)
+
+text(.25, 2, "Prior")
+text(.6, 5, "Posterior")
+```
+
+
+---
+
+.pull-right-55[
+```{r, fig.asp = 0.6, out.width=550, dpi = 150}
+par(mar = c(4,4,.5,.5), mgp = c(2, .7, 0), cex = 1.2)
+x <- seq(0, 1, .01)
+plot(x, dbeta(x, 4, 4)
+     , type = "l", col = adjustcolor("slateblue", .7)
+     , lwd = 4
+     , ylab = "Probability Density", xlab = expression(theta)
+     , ylim = c(0, 7)
+     , lty = 2, bty = "n")
+lines(x, dbeta(x, 36, 12), col = "darkblue"
+      , lwd = 4)
+
+text(.25, 2, "Prior")
+text(.6, 5, "Posterior")
+```
+
+]
+
+What changes?
+
+--
+
+**How do we arrive at the Posterior distribution?**
+
+---
+layout: false
+class: inverse, middle, center
+
+# Bayes's Theorem
+
+```{r out.width = "55%"}
+include_graphics("src/Bayes_Theorem.jpg")
+```
+
+
+---
+layout:true
+
+.pull-right-45[
+```{r out.width = "65%"}
+include_graphics("src/Bayes_Theorem.jpg")
+```
+
+]
+
+### Bayes's Theorem
+
+---
+
+- The process by which the Prior distribution becomes the Posterior distribution is fundamental probability theory
+--
+
+- $P(\theta | x) = P(\theta) \frac{P(x | \theta)}{P(x)}$
+--
+
+- The Prior distribution is multiplied by another term to arrive at the Posterior distribution
+
+---
+
+.pull-left-45[
+.content-box-blue[
+$P(\theta | x) = P(\theta) \frac{P(x | \theta)}{P(x)}$
+]
+]
+
+<br>
+
+<br>
+
+<br>
+
+- $P(\theta | x)$: Posterior, after knowing the data
+--
+
+- $P(\theta)$: Prior, before knowing the data
+--
+
+- $P(x | \theta)$: Model of the Data, statistical model given the parameters
+--
+
+- $P(x)$: Probability of the Data, Prediction for the data across different parameter values.
+
+---
+layout:true
+
+### The Posterior Distribution
+
+---
+
+- The mathematical process to calculate the Posterior distribution is usually very complex
+--
+
+- An example: $P(x) = \int P(x | \theta) P(\theta) d\theta$
+--
+
+- Therefore, we often use estimation methods that estimate the Posterior distribution (e.g., in R) based on the Prior and Model of the Data
+
+
+
+---
+
+- Option 1: The Posterior distribution can be calculated mathematically
+    + e.g., the Posterior distribution for the probability parameter that Frank eats his food
+    + $\theta | x \sim \text{Beta}(4 + 32, 4 + 8)$
+    + More generally: For the Binomial-Beta model, the Posterior is: $\theta | x \sim \text{Beta}(a + x, b + (N - x))$
+
+--
+
+- Option 2: The Posterior distribution can only be estimated
+    + Estimation methods based on *Markov Chain Monte Carlo* estimators
+    
+---
+
+#### The MCMC process
+    
+```{r, fig.asp = .6, fig.width=8, message = F}
+par(mar = c(4,4,.5,.5), mgp = c(2, .7, 0), cex = 1.5)
+
+library(MCMCpack)
+dats <- rnorm(100, 1.2, 3)
+M <- 2000
+
+  N <- length(dats)
+  mn <- mean(dats)
+  sd <- sd(dats)
+  
+  mu <- 1:M
+  s2 <- 1:M
+  
+  prior_mu <- 1.2
+  prior_s2 <- 1
+  prior_a <- 2
+  prior_b <- 1
+  
+  for (m in 2:M){
+    #mu
+    c <- sum(dats) / s2[m-1] + prior_mu / prior_s2
+    v <- 1/(N/s2[m-1] + 1/prior_s2)
+    mu[m] <- rnorm(1, c*v, sqrt(v))
+    #s2
+    scale <- sum((N-1) * sd^2 + N * ((mn - mu[m])^2)) / 2 + prior_a
+    s2[m] <- rinvgamma(1, shape = N/2 + prior_b, scale = scale)
+  }
+
+plot(mu[1:50], type = "b", col = adjustcolor(1, .7),
+     ylab = expression(mu ~ "| x"), xlab = "Iteration")
+points(1, 1, pch = 19, col = "red")
+```
+
+---
+
+#### The MCMC process
+    
+```{r, fig.asp = .6, fig.width=8, message = F}
+par(mar = c(4,4,.5,.5), mgp = c(2, .7, 0), cex = 1.5)
+
+plot(mu[1:50], type = "b", col = adjustcolor(1, .7),
+     ylab = expression(mu ~ "| x"), xlab = "Iteration")
+abline(h = mean(dats), lty = 2, lwd = 3, col = adjustcolor(2, .5))
+```
+
+---
+
+#### The MCMC process
+    
+```{r, fig.asp = .6, fig.width=8}
+par(mar = c(4,4,.5,.5), mgp = c(2, .7, 0), cex = 1.5)
+
+plot(mu[1:1000], type = "l", col = adjustcolor(1, .7),
+     ylab = expression(mu ~ "| x"), xlab = "Iteration")
+```
+
+---
+
+The Result
+
+```{r, fig.asp = .6, fig.width=8}
+par(mar = c(4,4,.5,.5), mgp = c(2, .7, 0), cex = 1.5)
+
+hist(mu, xlab = expression(mu ~ "| x"), main = "")
+```
+
+---
+class: medium-font
+layout:true
+
+.pull-right-25[
+```{r out.width = "95%"}
+include_graphics("src/frank5.jpeg")
+```
+
+]
+
+### Back to Frank 
+
+---
+
+```{r, fig.asp = 0.6, out.width=450, dpi = 150}
+par(mar = c(4,4,.5,.5), mgp = c(2, .7, 0), cex = 1.2)
+x <- seq(0, 1, .01)
+plot(x, dbeta(x, 4, 4)
+     , type = "l", col = adjustcolor("slateblue", .7)
+     , lwd = 4
+     , ylab = "Probability Density", xlab = expression(theta)
+     , ylim = c(0, 7)
+     , lty = 2, bty = "n")
+lines(x, dbeta(x, 36, 12), col = "darkblue"
+      , lwd = 4)
+
+text(.25, 2, "Prior")
+text(.6, 5, "Posterior")
+```
+
+
+- What can we now learn about the probability that Frank eats his food?
+
+---
+
+```{r, fig.asp = 0.6, out.width=450, dpi = 150}
+par(mar = c(4,4,.5,.5), mgp = c(2, .7, 0), cex = 1.2)
+x <- seq(0, 1, .01)
+plot(x, dbeta(x, 4, 4)
+     , type = "l", col = adjustcolor("slateblue", .7)
+     , lwd = 4
+     , ylab = "Probability Density", xlab = expression(theta)
+     , ylim = c(0, 7)
+     , lty = 2, bty = "n")
+lines(x, dbeta(x, 36, 12), col = "darkblue"
+      , lwd = 4)
+
+text(.25, 2, "Prior")
+text(.6, 5, "Posterior")
+lines(rep(.75, 2), c(0, dbeta(.75, 36, 12))
+      , lwd = 4, col = "red")
+```
+
+
+- What is the mean? $\hat{\theta} = 0.75$
+
+---
+
+```{r, fig.asp = 0.6, out.width=450, dpi = 150}
+par(mar = c(4,4,.5,.5), mgp = c(2, .7, 0), cex = 1.2)
+x <- seq(0, 1, .01)
+plot(x, dbeta(x, 4, 4)
+     , type = "l", col = adjustcolor("slateblue", .7)
+     , lwd = 4
+     , ylab = "Probability Density", xlab = expression(theta)
+     , ylim = c(0, 7)
+     , lty = 2, bty = "n")
+lines(x, dbeta(x, 36, 12), col = "darkblue"
+      , lwd = 4)
+
+text(.25, 2, "Prior")
+text(.6, 5, "Posterior")
+```
+
+
+- What is the probability that Frank eats more than 80% of the meals?
+
+---
+
+```{r, fig.asp = 0.6, out.width=450, dpi = 150}
+par(mar = c(4,4,.5,.5), mgp = c(2, .7, 0), cex = 1.2)
+x <- seq(0, 1, .01)
+plot(x, dbeta(x, 4, 4)
+     , type = "l", col = adjustcolor("slateblue", .7)
+     , lwd = 4
+     , ylab = "Probability Density", xlab = expression(theta)
+     , ylim = c(0, 7)
+     , lty = 2, bty = "n")
+lines(x, dbeta(x, 36, 12), col = "darkblue"
+      , lwd = 4)
+
+text(.25, 2, "Prior")
+text(.6, 5, "Posterior")
+xmin <- seq(.8, 1, .01)
+polygon(c(xmin, rev(xmin)), c(dbeta(xmin, 36, 12), rep(0, length(xmin))), col = adjustcolor("red", .3))
+```
+
+
+- What is the probability that Frank eats more than 80% of the meals?
+    + $P(\theta > 0.8 | x) = `r round(1 - qbeta(.8, 36, 12), 2)`$
+    
+---
+
+```{r, fig.asp = 0.6, out.width=450, dpi = 150}
+par(mar = c(4,4,.5,.5), mgp = c(2, .7, 0), cex = 1.2)
+x <- seq(0, 1, .01)
+plot(x, dbeta(x, 4, 4)
+     , type = "l", col = adjustcolor("slateblue", .7)
+     , lwd = 4
+     , ylab = "Probability Density", xlab = expression(theta)
+     , ylim = c(0, 7)
+     , lty = 2, bty = "n")
+lines(x, dbeta(x, 36, 12), col = "darkblue"
+      , lwd = 4)
+
+text(.25, 2, "Prior")
+text(.6, 5, "Posterior")
+minmax <- qbeta(c(0.025, .975), 36, 12)
+xmin <- seq(minmax[1], minmax[2], .01)
+polygon(c(xmin, rev(xmin)), c(dbeta(xmin, 36, 12), rep(0, length(xmin))), col = adjustcolor("red", .3))
+```
+
+
+- Which parameter values can we deem implausible?
+--
+
+- Credible Interval: 95% of the posterior distribution is between `r round(minmax[1], 2)` and `r round(minmax[2], 2)`
+
+
+---
+layout: false
+class: inverse, middle, center
+
+
+# Bayesian Parameter Estimation in R
+
+---
+layout:true
+
+### Bayesian Parameter Estimation in R
+
+---
+
+In this course, we use the `R`-package `brms`.
+
+- `brms` = Bayesian Regression Models using Stan
+- Created by [Paul-Christian Bürkner](https://github.com/paul-buerkner/brms)
+- An interface to the [Stan](https://mc-stan.org/) probabilistic programming language + sampling routines
+- Allows fitting of a huge range of models using `R`'s formula syntax
+- These slides aim to introduce the main functions
+
+
+---
+
+#### R formula syntax
+
+```{r out.width = "105%"}
+include_graphics("src/syntax.png")
+```
+
+---
+
+#### `brm()`
+
+```{r, eval = F, echo = T}
+brm(formula, data, family = gaussian(), prior = NULL,
+  sample_prior = c("no", "yes", "only"),
+  chains = 4, iter = 2000, warmup = floor(iter/2), 
+  cores = getOption("mc.cores", 1L))
+```
+
+see `?brm` for more
+
+---
+class:medium-font
+
+#### Binomial Model in `brms`
+
+- $y_i = 0, 1, 1, 1, 0, ...$ for the $i$th meal
+--
+
+- $Y_i \sim \mbox{Bernoulli}(\pi), \;$ 
+    + where $\pi = \frac{\exp(\theta)}{\exp(\theta) + 1}$ (inverse logit function).
+--
+    + Prior is placed on $\theta$ instead of $\pi$: $\theta \sim \mbox{Normal}(\mu_\theta, \sigma^2_\theta)$
+--
+
+.pull-left-40[
+#### Prior for $\theta$?
+
+$\theta = \log \frac{\pi}{1 - \pi}$
+
+(logit function)
+]
+
+--
+
+.pull-right-60[
+```{r, echo = T}
+p_sim <- rbeta(100000, 4, 4)
+theta_sim <- log(p_sim / (1 - p_sim))
+c(mean(theta_sim), sd(theta_sim))
+```
+]
+
+
+---
+
+```{r brms-binomial, echo = T, cache = T}
+library(brms)
+frankdata <- data.frame(y = c(rep(1, 32), rep(0, 8)))
+fit <- brm(data = frankdata
+           , family = bernoulli(link = "logit")
+           , y  ~ 0 + Intercept
+           , prior = c(prior(normal(0, 0.75)
+                             , coef = Intercept))
+           , iter = 2000
+           , warmup = 700)
+```
+
+---
+
+```{r echo = T}
+fit
+```
+
+---
+
+```{r echo = T, fig.asp=.5, out.width=700, dpi=150}
+plot(fit)
+```
+
+---
+
+```{r echo = T, fig.asp = .5, dpi = 150, out.width=500}
+post <- as_draws_df(fit)
+post %>% 
+  mutate(pi = exp(b_Intercept) / (1 + exp(b_Intercept))) -> post
+
+ggplot(post, aes(pi)) +
+  geom_density() +
+  theme_light(base_size = 16)
+```
+---
+
+How much did we learn?
+
+```{r, fig.asp = .5, dpi = 150, out.width=600, warning=F}
+# Extract the posterior distribution
+posterior <- posterior_samples(fit)
+
+# Create a data frame for the prior distribution
+theta <- rnorm(100000, 0, 0.75)
+prior <- data.frame(
+  pi = exp(theta) / (exp(theta) + 1)
+)
+
+# Create a data frame for the plot
+plot_data <- rbind(
+  data.frame(value = prior$pi, distribution = "Prior"),
+  data.frame(value = post$pi, distribution = "Posterior")
+)
+
+# Create the plot
+ggplot(plot_data, aes(x = value, fill = distribution)) +
+  geom_density(alpha = 0.5) +
+  scale_fill_manual(values = c("lightblue", "lightblue4")) +
+  labs(x = "Theta", y = "Density", fill = "Distribution") +
+  theme_light(base_size = 16)
+```
+
+
+
+
+---
+
+```{r echo = T}
+library(ggplot2)
+
+bayes_binomial <- function(successes, failures, prior_alpha, prior_beta){
+  # Parameter of the Posterior
+  aprime <- prior_alpha + successes
+  bprime <- prior_beta + failures
+  
+  # Estimator for theta
+  schaetzer <- aprime / (aprime + bprime)
+  ci <- qbeta(c(0.025, 0.975), aprime, bprime)
+  
+  # Plot
+  cols <- hcl(h = seq(15, 375
+                      , length = 3)
+              , l = 65, c = 100)[1:2]
+  p <- ggplot(data.frame(x = 1), aes(x = x)) + 
+    xlim(c(0, 1)) +
+    stat_function(fun = dbeta
+                  , args = list(prior_alpha, prior_beta)
+                  , geom = "area", alpha = 0.35, aes(fill = 'Prior')) + 
+    stat_function(fun = dbeta
+                  , args = list(aprime, bprime)
+                  , geom = "area", alpha = 0.35, aes(fill = 'Posterior')) + 
+    scale_fill_manual(name='Distribution',
+                     breaks=c('Prior', 'Posterior'),
+                     values=c('Prior' = cols[1], 'Posterior' = cols[2])) +
+    xlab(expression("Parameter" ~ theta)) +
+    ylab("Probability Density") +
+  theme_light(base_size = 14)
+  
+  return(list("estimate" = schaetzer, "ci" = ci, "p" = p))
+}
+```
+
+
+---
+class:small-code, medium-font
+
+.pull-left-45[
+```{r echo = T, fig.asp = 0.5, dpi = 150}
+prior1 <- 
+  bayes_binomial(successes = 32
+                 , failures = 8
+                 , prior_alpha = 4
+                 , prior_beta = 4)
+
+prior1$estimate; prior1$ci
+prior1$p
+```
+
+]
+
+--
+
+.pull-right-45[
+```{r echo = T, fig.asp = .5, dpi = 150}
+prior2 <- 
+  bayes_binomial(successes = 32
+                 , failures = 8
+                 , prior_alpha = 3
+                 , prior_beta = 7)
+
+prior2$estimate; prior2$ci
+prior2$p
+```
+]
+
+
+---
+layout: false
+class: inverse, middle, center
+
+
+# Wrap up
+
+---
+
+### Wrap up
+
+```{r out.width = "65%"}
+include_graphics("src/BayesianLearningCycle.jpg")
+```
+
+
+---
+
+### Assignments
+
+Assignment 1
+
+### Literature
+
+- Nicenboim, Schad, Vasishth, Introduction to Bayesian Data Analysis for Cognitive Science, Chapter 2
+- Navarro, Chapter 17 Introduction and 17.1
+
+---
+class: inverse, middle, center
+
+# :)
