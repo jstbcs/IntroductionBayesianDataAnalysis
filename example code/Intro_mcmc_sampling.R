@@ -23,8 +23,8 @@ likelihood <- function( theta , data ) {
 }
 
 # Define the prior density function. 
-prior <- function( theta ) {
-  pTheta = dbeta( theta , 1 , 1 )
+prior <- function( theta, alpha , beta ) {
+  pTheta = dbeta( theta , alpha , beta )
   # The theta values passed into this function are generated at random,
   # and therefore might be inadvertently greater than 1 or less than 0.
   # The prior for theta > 1 or for theta < 0 is zero:
@@ -35,8 +35,8 @@ prior <- function( theta ) {
 # Define the relative probability of the target distribution, 
 # as a function of vector theta. For our application, this
 # target distribution is the unnormalized posterior distribution.
-targetRelProb <- function( theta , data ) {
-  targetRelProb =  likelihood( theta , data ) * prior( theta )
+targetRelProb <- function( theta , data, alpha , beta ) {
+  targetRelProb =  likelihood( theta , data ) * prior( theta, alpha , beta )
   return( targetRelProb )
 }
 
@@ -57,7 +57,11 @@ nRejected <- 0
 # set.seed(47405) # comment out to create different graphs
 
 # Specify standard deviation of proposal distribution:
-proposalSD <- c(0.02,0.2,2.0)[3] # vary the proposal standard deviation
+proposalSD <- c(0.02,0.2,2.0)[2] # vary the proposal standard deviation
+
+# Specify priors
+alpha <- 1
+beta <- 1
 
 for ( t in 1:(NSamples - 1) ) {
 	currentPosition <- theta[t]
@@ -67,8 +71,8 @@ for ( t in 1:(NSamples - 1) ) {
 	
 	# Compute the probability of accepting the proposed jump.
 	probAccept <- min( 1,
-		targetRelProb( currentPosition + proposedJump , myData )
-		/ targetRelProb( currentPosition , myData ) )
+		targetRelProb( currentPosition + proposedJump , myData, alpha , beta )
+		/ targetRelProb( currentPosition , myData, alpha , beta ) )
 	
 	# Generate a random uniform value from the interval [0,1] to
 	# decide whether or not to accept the proposed jump.

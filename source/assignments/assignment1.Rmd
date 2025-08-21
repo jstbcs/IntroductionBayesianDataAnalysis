@@ -31,9 +31,14 @@ i. Suppose we assume that about 25% of the broader (European) public are part of
 
 ii. Compare your results from i. to the results if you choose a different prior, $\theta \sim \mbox{Beta}(1 ,1)$. Interpret the differences.
 
-# Bonus Exercise 3 (in case you finish early and/or are bored)
+# Bonus Exercise 3
+
+Check out the example code in `Intro_mcmc_sampling.R`, which shows a Metropolis Hastings algorithm to estimate $\theta$ for a Binomial model with  a Beta prior. Try to understand the code, and run the algorithm a few times with different settings for `proposalSD`.
+
+# Bonus Exercise 4 (in case you finish early and/or are bored)
 
 Here we apply Bayes' rule for the case of discrete events.
 
 Suppose that 1 in 1000 people in a population is expected to get HIV. Suppose a test is administered on a suspected HIV case, where the test has a true positive rate (the proportion of positives that are actually HIV positive) of 95\%  and true negative rate (the proportion of negatives are actually HIV negative) 98\%. 
 Use Bayes' theorem to find out the probability that a patient testing positive actually has HIV.
+

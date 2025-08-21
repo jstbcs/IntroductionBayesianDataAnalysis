@@ -1018,6 +1018,7 @@ ggplot(post, aes(pi)) +
   geom_density() +
   theme_light(base_size = 16)
 ```
+
 ---
 
 How much did we learn?
