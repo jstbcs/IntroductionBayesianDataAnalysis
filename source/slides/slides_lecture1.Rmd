@@ -124,7 +124,9 @@ include_graphics("src/who.png")
 
 ### Overview over the workshop
 
-TO DO!
+```{r out.width = "100%"}
+include_graphics("../../schedule.png")
+```
 
 ---
 
