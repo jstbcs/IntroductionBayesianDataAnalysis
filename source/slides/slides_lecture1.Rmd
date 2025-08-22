@@ -109,7 +109,7 @@ include_graphics("src/JuliaH_01.jpg")
 <br>
 
 - Dr. Julia Haaf
-    + Professor, University of Amsterdam
+    + Professor, University of Potsdam
 
 ---
 class: middle, center
@@ -119,6 +119,12 @@ include_graphics("src/who.png")
 ```
 
 # Who are you?
+
+---
+
+### Overview over the workshop
+
+TO DO!
 
 ---
 

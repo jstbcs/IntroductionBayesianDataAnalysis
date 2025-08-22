@@ -1,5 +1,5 @@
 ---
-title: "Homework 0"
+title: "Assignment 0"
 author: "Shravan Vasishth"
 date: ""
 output: pdf_document
