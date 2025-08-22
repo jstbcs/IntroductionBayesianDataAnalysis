@@ -3,7 +3,7 @@
 Authors: Nicle Cruz and Julia Haaf
 
 ## Description
-This course is an introduction to Bayesian modeling, oriented towards linguists and psychologists. Topics to be covered: Introduction to Bayesian data analysis, Linear Modeling, Hierarchical Models, and Bayes factors. We will cover these topics within the context of an applied Bayesian workflow that includes exploratory data analysis, model fitting, and model checking using prior and posterior predictive checks.
+This course is an introduction to Bayesian modeling, oriented towards linguists and psychologists. Topics to be covered: Introduction to Bayesian data analysis, Linear Modeling, Hierarchical Models, and Bayes factors. We will cover these topics within the context of an applied Bayesian workflow that includes exploratory data analysis, model fitting, and model checking using prior and posterior predictive checks. Here is the schedule:
 
 ![schedule](schedule.png)
 
