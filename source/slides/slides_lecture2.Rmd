@@ -1,0 +1,676 @@
+---
+title     : "<small>Introduction to Bayesian Data Analysis</small>"
+subtitle  : "Lecture 2: Analysis Sensitivity and a Bayesian Workflow"
+author    : "<br />Julia Haaf"
+date      : "<small>Summer 2025</small>"
+
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    self_contained: true
+    chakra: libs/remark-latest.min.js
+    css: ["src/xaringan-themer.css", "src/slides.css", "hygge"]
+    nature:
+      highlightLines: true
+      countIncrementalSlides: false
+header-includes:
+  - \usepackage{xcolor}
+  - \usepackage{amsmath} % not really used here
+  - \DeclareMathSymbol{\qm}{\mathalpha}{operators}{"3F}
+  - \DeclareMathAlphabet{\mathbbold}{U}{bbold}{m}{n}
+---
+
+exclude: true
+
+```{r setup, included = FALSE}
+library("knitr")
+library(kableExtra)
+library(tidyverse)
+library(brms)
+library(dplyr)
+options(htmltools.dir.version = FALSE)
+opts_chunk$set(echo = FALSE, fig.align = "center")
+
+# remotes::install_github("gadenbuie/xaringanExtra")
+library("xaringanExtra")
+library("xaringanthemer")
+
+my_colors <- c("#495e8c", "#ef9ada")
+
+library("ggplot2")
+library(diagram)
+```
+
+```{r extras-styling, include = FALSE}
+use_xaringan_extra(c("tile_view", "clipboard")) #, "broadcast", "webcam", "animate_css"
+
+# style_mono_light("#32475b")
+style_mono_accent(
+  base_color = my_colors[1]
+  # , title_slide_background_image = "src/uva.svg"
+  , header_font_google = google_font("Poppins")
+  , header_h1_font_size = "36pt"
+  , text_font_google = google_font("Open Sans")
+  , text_font_size = "20pt"
+  , text_color = "#3a3a3a"
+  , outfile = "src/xaringan-themer.css"
+)
+```
+
+```{r}
+add_overlay <- function(..., label = NULL, label_style = NULL) {
+  el <- list(...)
+  
+  y <- '<div id="overlay-highlight"'
+  if(length(el) > 0) {
+    y <- c(y, 'style="', glue::glue('{names(el)}:{el};'))
+  }
+  y <- c(y, '">')
+  
+  if(!is.null(label)) {
+    y <- c(y, glue::glue('<span" class="vertical-center"" style="{label_style}">{label}</span>'))
+  }
+  
+  knitr::asis_output(glue::glue_collapse(c(y, "</div>")))
+}
+```
+
+<script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.js"></script>
+<script type="module">
+import mediumZoom from 'https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.esm.js'
+
+const zoomDefault = mediumZoom('#zoom-default')
+const zoomMargin = mediumZoom('#zoom-margin', { margin: 45 })
+</script>
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  "HTML-CSS": {
+    scale: 150,
+  }
+});
+</script>
+
+---
+
+.pull-right-25[
+```{r out.width = "95%"}
+include_graphics("src/fragile.jpg")
+```
+]
+
+### "Sensitive Analyses," what does that mean?
+
+--
+
+What are the causes of sensitive analyses?
+
+--
+
+1. Data fit different statistical models
+    + Different conclusions possible
+--
+2. Unclear what is signal and what is noise
+    + Random data patterns are interpreted
+--
+3. Analyses suggest clear interpretations even though the analysis algorithms did not work reliably.
+
+---
+layout:true
+
+.pull-right-25[
+```{r out.width = "95%"}
+include_graphics("src/fragile.jpg")
+```
+]
+
+### Sensitive Analyses
+
+---
+class:medium-font
+
+What checks for sensitive analyses do you know?
+
+--
+
+- Check assumptions
+    + e.g., repeat analysis without influential outliers
+--
+- Multiverse Analysis
+    + Identify different reasonable analysis paths and check the robustness of the results
+--
+
+.content-box-blue[
+Sensitivity Analysis / Robustness Checks: How robust is my statistical analysis against various decisions (statistical, methodological, theoretical).
+]
+
+---
+
+Overview
+
+1. Bayesian Workflow
+2. Model Specification
+    + Choice of Priors
+3. Estimation
+    + Convergence
+4. Stability and Sensitivity
+5. Posterior Predictions
+
+---
+layout:true
+
+.pull-right-45[
+```{r out.width = "100%"}
+include_graphics("src/quantifier.png")
+```
+]
+
+### Example: Quantifiers
+
+---
+class:medium-font
+
+--
+
+- Quantifiers: Most, many, more than half, fewer than half, few
+
+--
+
+- What is the response behavior?
+--
+
+    + Consistent differences between most and more than half
+    + Are most and few "symmetric"?
+    + Do people differ in their response behavior?
+--
+
+- What is the right model?
+
+---
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+dat <- read.csv("data/quantifier_preprocessed.csv")
+qid <- unique(dat$quant)
+dat <- subset(dat, dat$quant %in% qid[1:5])
+dat$quant <- factor(dat$quant)
+dat$cpercent <- dat$percent - 50
+
+# lme4::glmer(resp ~ quant*cpercent + (quant | id)
+#             , data = dat
+#             , family = binomial(link = "logit"))
+
+# glm(resp ~ quant*cpercent
+#     , data = dat
+#     , family = binomial(link = "logit"))
+# 
+# glm(resp ~ cpercent
+#     , data = dat
+#     , family = binomial(link = "logit")
+#     , subset = (dat$quant == "Most1"))
+```
+
+- Model development requires numerous steps that should be well thought out.
+--
+
+- Bayesian Workflow can help
+
+---
+
+layout:false
+class: inverse, middle, center
+
+# Bayesian Workflow
+
+---
+layout:true
+class:medium-font
+
+.pull-right-25[
+```{r out.width = "95%"}
+include_graphics("src/ABadgeForBayesPurple.png")
+```
+]
+
+### Bayesian Workflow
+
+---
+
+.center[
+```{r out.width = "75%"}
+include_graphics("src/workflow.png")
+```
+]
+
+---
+
+Simplified version: Veenman, Stefan, & Haaf (2024)
+
+.center[
+```{r out.width = "95%"}
+include_graphics("src/veenman.png")
+```
+]
+
+---
+class:small-font
+
+- Model specification
+    + Model structure (e.g. Normal vs. Lognormal)
+    + Choice of priors (pick priors, prior prediction)
+- Estimate model parameters
+    + Check convergence via model diagnostics (trace plots, $\hat{R}$, ESS)
+    + Visualize posteriors
+- Model comparison: The *most Bayesian way* is Bayes factors
+- Sensitivity analysis
+    + Check estimation stability
+    + Check prior sensitivity
+- Also sensible: Posterior prediction (posterior predictive checks)
+
+---
+layout:false
+class:medium-font
+
+### Simple example: Button press
+
+- Finger tapping task (for a review, see Hubel et al. 2013)
+- Procedure
+  + blank screen (200 ms)
+  + cross in the middle of a screen
+  + as soon as they see the cross, they tap on the space bar as fast as they can until the experiment is over (361 trials). 
+- Dependent measure: Finger tapping times in milliseconds.
+- Research question is: how long does it take for this particular subject to press a key?
+
+---
+
+### Model specification
+
+What is a good model for these data?
+
+--
+
+- $Y_i$ is the reaction time in the $i$th trial
+- $Y_i \sim \mbox{Normal}(\mu, \sigma^2)$
+--
+
+- Priors for $\mu$ and $\sigma^2$ are needed
+
+---
+class:medium-font
+
+.pull-right-45[
+```{r out.width = "100%"}
+include_graphics("src/priorprocess.png")
+```
+]
+
+### Choice of Prior
+
+- What properties should the prior have?
+    + e.g., only positive values
+--
+- What parameter values do we expect?
+    + e.g., by how many units does the dependent variable increase with one unit of the predictor?
+--
+- If we choose this prior, does the model make plausible predictions for the data?
+--
+
+- If not, we need to adjust the prior
+
+---
+layout:true
+
+### Choice of Prior
+
+---
+
+```{r, cache = TRUE, message=FALSE, warning=FALSE, eval = TRUE, echo = TRUE}
+library(brms)
+bprior <- c(prior(normal(0,2), class = Intercept)
+            , prior(student_t(3, 0, 10), class = sigma))
+```
+
+--
+
+- To figure out whether this is a good prior, we can use **prior** prediction
+    + Simulate data from the speficied model
+    + Assess whether these data are plausible
+
+---
+
+#### Prior Prediction
+
+```{r brms.prior, cache = TRUE, message=F, warning=F, eval = TRUE, echo = TRUE}
+dat <- data.frame(t = rep(1, 361), trial = 1:361)
+model.prior <- brms::brm(t ~ 1
+            , data = dat
+            , prior = bprior
+            , sample_prior = "only"
+            , iter = 4000
+            , cores = 4)
+```
+
+--
+
+```{r echo =T}
+prior.predictions <- posterior_predict(model.prior)
+```
+
+---
+
+Visualization of predicted data (say the mean)
+
+```{r priorpredviz, cache =T, eval = TRUE, echo = FALSE, fig.asp = .7, dpi = 150, out.width=600, warning = F}
+prior.pred.means <- colMeans(t(prior.predictions))
+prior.pred.sd <- apply(t(prior.predictions), 2, sd)
+prior.pred <- data.frame(
+  Parameter = rep(c("mean", "sigma"), each = 8000)
+  , Prediction = c(prior.pred.means, prior.pred.sd))
+
+ggplot(prior.pred, aes(x = Prediction, fill = Parameter)) +
+  geom_histogram (binwidth = 2, alpha = 0.5, position = "identity") +
+  facet_wrap(~ Parameter, ncol = 1) +
+  xlim(c(-10, 75)) + 
+  theme_light(base_size = 16)
+```
+
+---
+
+#### Redo
+
+```{r, cache = TRUE, message=FALSE, warning=FALSE, eval = TRUE, echo = TRUE}
+bprior <- c(prior(normal(.4,.25), class = Intercept, lb = 0)
+            , prior(student_t(3, 0, .3), class = sigma))
+```
+
+```{r brms.prior2, cache = TRUE, message=F, warning=F, eval = TRUE, echo = F}
+dat <- data.frame(t = rep(1, 361), trial = 1:361)
+
+model.prior <- brms::brm(t ~ 1
+            , data = dat
+            , prior = bprior
+            , sample_prior = "only"
+            , iter = 4000
+            , cores = 4)
+```
+
+```{r echo =F}
+prior.predictions <- posterior_predict(model.prior)
+```
+
+--
+
+```{r priorpredviz2, cache =T, eval = TRUE, echo = FALSE, fig.asp = .7, dpi = 150, out.width=500, warning = F}
+prior.pred.means <- colMeans(t(prior.predictions))
+prior.pred.sd <- apply(t(prior.predictions), 2, sd)
+prior.pred <- data.frame(
+  Parameter = rep(c("mean", "sigma"), each = 8000)
+  , Prediction = c(prior.pred.means, prior.pred.sd))
+
+ggplot(prior.pred, aes(x = Prediction, fill = Parameter)) +
+  geom_histogram (binwidth = .1, alpha = 0.5, position = "identity") +
+  facet_wrap(~ Parameter, ncol = 1) +
+  xlim(c(-1, 3)) + 
+  theme_light(base_size = 16)
+```
+
+
+---
+layout:true
+
+### Estimate model parameters
+
+---
+
+```{r echo = T}
+load("data/df_spacebar.rda")
+head(df_spacebar)
+```
+--
+
+```{r echo = T}
+df_spacebar$t <-  df_spacebar$t / 1000
+```
+
+---
+
+```{r}
+hist(df_spacebar$t)
+```
+
+---
+
+```{r brms.est, cache = TRUE, message=F, warning=F, eval = TRUE, echo = T}
+model.fit <- brms::brm(t ~ 1
+            , data = df_spacebar
+            , prior = bprior
+            , iter = 4000
+            , cores = 4)
+```
+
+
+---
+
+#### Model Diagnostics for Convergence Checks
+
+Did the algorithm draw sufficient and good samples from the posterior distribution?
+
+--
+
+- $\hat{R}$: `rhat(model.fit)`
+- Effective samples: `neff_ratio(model.fit)`
+- Trace plot: `mcmc_plot(model.fit, type = "trace")`
+
+---
+
+#### $\hat{R}$
+
+- $\hat{R}$ compares the between- and within-chain estimates. 
+- $\hat{R}$ is larger than 1 when chains have not mixed well.
+- Only rely on the model if the $\hat{R}$s are less than 1.05.
+
+```{r echo = T}
+brms::rhat(model.fit)
+```
+
+---
+
+#### Effective samples
+
+- Effective samples measure the efficiency of the sampling algorithm.
+- Bulk ESS is for the bulk of the posterior distribution (relevant for mean and median estimates)
+- Tail ESS indicates the sampling efficiency at the tails of the distribution (relevant for credible intervals)
+
+```{r echo = T}
+neff_ratio(model.fit)
+```
+
+---
+
+#### Trace plot
+
+```{r echo = T, fig.asp = .5, dpi = 150, out.width=500}
+mcmc_plot(model.fit, type = "trace") +
+  theme_light(base_size = 20)
+```
+
+---
+
+#### Visualize posteriors
+
+```{r echo = T}
+model.fit
+```
+
+---
+
+```{r, fig.asp = .5, dpi = 150, out.width=500, message=FALSE, echo = T}
+library(bayesplot)
+mcmc_areas(model.fit, prob = 0.8
+           , pars = c("Intercept", "sigma")) +
+  labs(title = "Posterior distributions"
+       , subtitle = "with medians and 80% intervals") +
+  theme_light(base_size = 20)
+```
+
+---
+layout:false
+
+### Model comparison
+
+- To assess how well a model reflects key patterns in the data, one typically compares it to one or more model with alternative specifications.
+- That's tomorrow's topic
+
+
+---
+class:medium-font
+
+### Sensitivity Analysis
+
+1. Check estimation stability
+2. Check prior sensitivity
+
+---
+class: medium-font
+
+.footnote[Figure from Schad, et al. (2023) *Psychological Methods*.]
+
+### Estimation stability
+
+.pull-right-60[
+```{r out.width = "95%"}
+include_graphics("src/stabilityanalysis.png")
+```
+]
+
+- Algorithms for estimating posterior distributions (and Bayes factors) are probabilistic
+    + Random fluctuations can affect the results
+--
+- Stability Analysis: Repeat all processes with probabilistic estimators.
+
+---
+class:medium-font
+
+.footnote[Figure from Haaf & Rouder (2019) *Psychonomic Bulletin and Review*.]
+
+
+### Prior Sensitivity
+
+What influence does the choice of my prior have on the results?
+
+--
+
+1. Determine value ranges for realistic priors for relevant parameters
+--
+
+2. Repeat analysis with combinations of realistic priors for different parameters
+--
+
+3. Do the conclusions change (not the values)?
+
+--
+
+.center[
+```{r out.width = "95%"}
+include_graphics("src/sensitivityanalysis.png")
+```
+]
+
+---
+layout: true
+
+### Posterior Prediction
+
+---
+
+- The posterior distributions can be used to generate predictions for future data from the model. 
+--
+
+- Given the data from the current study, the posterior predictive distribution tells us what data we should expect in the future.
+--
+
+- Formally (assuming past and future data areindependent): $p(y_{pred} | y) = \int_\theta p(y_{pred} | \theta) p(\theta | y) d \theta$
+--
+
+- Practically, samples from the posterior predicitve distribution can be drawn using brms.
+
+```{r echo = T}
+posterior.predictions <- posterior_predict(model.fit)
+```
+
+---
+
+```{r postpredviz1, cache =T, eval = TRUE, echo = TRUE, fig.asp = .5, dpi = 150, out.width=600, warning = F}
+bayesplot::ppc_dens_overlay(df_spacebar$t, posterior.predictions[1:500,]) + 
+  theme_light(base_size = 16)
+```
+
+---
+
+```{r postpredviz, cache =T, eval = TRUE, echo = FALSE, fig.asp = .5, dpi = 150, out.width=600, warning = F}
+prior.pred.means <- colMeans(t(prior.predictions))
+prior.pred.sd <- apply(t(prior.predictions), 2, sd)
+
+post.pred.means <- colMeans(t(posterior.predictions))
+post.pred.sd <- apply(t(posterior.predictions), 2, sd)
+
+pred <- data.frame(
+  Parameter = rep(c("Prior_mean", "Prior_sigma", "Posterior_mean", "Posterior_sigma"), each = 8000)
+  , Prediction = c(prior.pred.means, prior.pred.sd, post.pred.means, post.pred.sd))
+
+ggplot(pred, aes(x = Prediction, fill = Parameter)) +
+  geom_histogram (binwidth = 0.03, alpha = 0.5, position = "identity") +
+  facet_wrap(~ Parameter, ncol = 2, nrow = 2) +
+  xlim(c(-.05, .75)) + 
+  theme_light(base_size = 16)
+```
+
+---
+layout:false
+class: inverse, middle, center
+
+# Wrap up
+
+---
+
+.pull-right-36[
+```{r out.width = "95%"}
+include_graphics("src/dory-waving.gif")
+```
+]
+
+### Rethinking needed!
+
+- Uncertainty is not a bad thing in statistics (as long as we can quantify it)
+--
+
+- Making decisions is necessary in statistics (as long as we handle them transparently)
+--
+
+- Workflows can help structure decisions and uncertainties, not prevent them.
+
+---
+class:smaller-font
+
+### Literature
+
+Gelman, A., Vehtari, A., Simpson, D., Margossian, C. C., Carpenter, B., Yao, Y., ... & Modrák, M. (2020). Bayesian workflow. arXiv preprint arXiv:2011.01808.
+
+Schad, D. J., Betancourt, M., & Vasishth, S. (2021). Toward a principled Bayesian workflow in cognitive science. Psychological Methods, 26(1), 103–126. https://doi.org/10.1037/met0000275
+
+Schad, D. J., Nicenboim, B., Bürkner, P. C., Betancourt, M., & Vasishth, S. (2023). Workflow techniques for the robust use of bayes factors. Psychological methods, 28(6), 1404.
+
+Veenman, M., Stefan, A. M., & Haaf, J. M. (2024). Bayesian hierarchical modeling: An introduction and reassessment. Behavior Research Methods, 56(5), 4600-4631.
+
+Ramotowska, S., Haaf, J., Van Maanen, L., & Szymanik, J. (2024). Most quantifiers have many meanings. Psychonomic Bulletin & Review, 1-12.
+
+Sarafoglou, A., Giacobello, A., Godmann, H., Johnson, T., Visser, I., Haaf, J. M., & Szymanik, J. (2024). A Bayesian framework to study individual differences in semantic representations.
+
+Haaf, J. M., & Rouder, J. N. (2019). Some do and some don’t? Accounting for variability of individual difference structures. Psychonomic Bulletin & Review, 26(3), 772-789.
+
+Roos, M., Martins, T. G., Held, L., & Rue, H. (2015). Sensitivity analysis for Bayesian hierarchical models. Bayesian Analysis, 10(2),
+321–349. https://doi.org/10.1214/14-BA909
+
+---
+class: inverse, middle, center
+
+# :)
