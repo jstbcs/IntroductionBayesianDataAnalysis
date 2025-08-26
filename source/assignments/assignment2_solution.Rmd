@@ -1,0 +1,226 @@
+---
+title: "Assignment 2"
+author: "Julia Haaf & Nicole Cruz"
+date: ""
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo = T}
+library(brms)
+library(ggplot2)
+```
+
+
+# Exercise 1: Check for parameter recovery in a linear model using simulated data.
+
+Generate some simulated independent and identically distributed data with $n=100$ data points as follows:
+
+```{r}
+y <- rnorm(100, mean = 500, sd = 50)
+```
+
+Next, fit a simple linear model with a normal likelihood:
+
+\begin{equation}
+y_n  \sim \mathit{Normal}(\mu,\sigma)
+\end{equation}
+
+
+Specify the following priors:
+
+\begin{equation}
+\begin{aligned}
+\mu &\sim \mathit{Uniform}(0, 60000) \\
+\sigma &\sim \mathit{Uniform}(0, 2000)
+\end{aligned}
+\end{equation}
+
+Generate posterior predictive distributions of the parameters and check that the true values of the parameters $\mu=500, \sigma=50$ are recovered by the model. What this means is that you should check whether these true values lie within the range of the posterior distributions of the two parameters. This is a good sanity check for finding out whether a model can in principle recover the true parameter values correctly.
+
+## Solution
+
+Generate some simulated data with known parameter values:
+
+```{r}
+y<-rnorm(100,mean=500,sd=50)
+sim_dat<-data.frame(y=y)
+```
+
+```{r model_1, echo=TRUE, message=FALSE, results="hide", cache = T}
+sim_model <- brm(y ~ 1,
+  data = sim_dat,
+  family = gaussian(),
+  prior = c(
+    prior(uniform(0, 60000), class = Intercept, lb = 0, ub = 60000),
+    prior(uniform(0, 2000), class = sigma, lb = 0, ub = 2000)
+  ),
+  chains = 4,
+  iter = 2000,
+  warmup = 1000
+)
+```
+
+Look at the posterior distributions:
+
+```{r}
+plot(sim_model)
+```
+
+Confirm through visual inspect that the true values ($\mu=500, \sigma=50$) do fall within the respective posterior distributions shown in the plot.
+
+
+# Exercise 2: Chocolate Bars
+
+```{r, echo = F}
+weight <- round(rnorm(100, 48, 1.5), 2)
+nutties <- data.frame(nuddybuddy = 1:100
+           , weight = weight)
+# write.csv(nutties, file = "data/nutties.csv")
+```
+
+Imagine your favorit chocolate bar is called *Nutty Buddy Bites*. Because you buy Nutty Buddies so often, you notice that they seem to be lighter than just a few years ago even though the weight on the package hasn't changed. As a good statistician, you decide to test whether your suspicions are warranted. For the sake of research, you buy 100 Nutty Buddies and a good scale, and you weigh each of the chocolate bars. You save the final data set as `nutties.csv`.
+
+a. The packaging says that the bars are supposed to weigh 50g. Using normal distributions, choose priors that represent **your** assumptions/beliefs about chocolate bar weight. To think about a reasonable set of priors for $\mu$ and $\sigma$, you should come up with your own subjective assessment about what you think a reasonable range of values can be for $\mu$ and how much variability might happen. There is no correct answer here.
+
+b. Fit the model with just a few iterations, say 50 iterations (set warmup to the default of 25, and use four chains). Does the model converge?
+
+c. Now fit the model properly with sufficient iterations. Visualize the posteriors.
+
+## Solution
+
+a.
+
+```{r}
+nuttiesdat <- read.csv("data/nutties.csv")
+
+nuttiesprior <- c(brms::prior(normal(50, 2)
+                             , coef = Intercept)
+                  , brms::prior(normal(3, 3)
+                             , class = sigma))
+```
+
+b. 
+
+```{r modelfit-50, cache = T}
+fit <- brm(data = nuttiesdat
+           , weight  ~ 0 + Intercept
+           , prior = nuttiesprior
+           , iter = 50
+           , warmup = 25
+           , silent = 2
+           , refresh = 0)
+```
+c.
+
+```{r modelfit, cache = T}
+fit <- brm(data = nuttiesdat
+           , weight  ~ 0 + Intercept
+           , prior = nuttiesprior
+           , iter = 5000
+           , warmup = 500
+           , silent = 2
+           , refresh = 0
+           , cores = 4)
+fit
+```
+
+### Bayes factor
+
+```{r}
+nuttiespriorfixed <- c(brms::prior(constant(50)
+                             , coef = Intercept)
+                  , brms::prior(normal(3, 3)
+                             , class = sigma))
+fit50 <- brm(data = nuttiesdat
+           , weight  ~ 0 + Intercept
+           , prior = nuttiespriorfixed
+           , iter = 5000
+           , warmup = 500
+           , silent = 2
+           , refresh = 0
+           , cores = 4)
+fit50
+```
+
+```{r}
+brms::bayes_factor(fit, fit50)
+```
+
+
+
+# Exericse 3: Other priors
+
+a. Can you come up with very informative priors that influence the posterior in a noticeable way (use normal distributions for priors, not uniform priors)? Again, there are no correct answers here; you may have to try several different priors before you can noticeably influence the posterior.
+
+b. Generate and plot prior predictive distributions based on this prior and plot them.
+
+c. Generate posterior predictive distributions based on this prior and plot them.
+
+## Solution
+
+a.
+
+```{r}
+nuttiesprior2 <- c(brms::prior(normal(50, 0.1)
+                             , coef = Intercept)
+                  , brms::prior(normal(3, 3)
+                             , class = sigma))
+```
+
+```{r modelfit2, cache = T}
+fit2 <- brm(data = nuttiesdat
+           , weight  ~ 0 + Intercept
+           , prior = nuttiesprior2
+           , iter = 2500
+           , warmup = 1000
+           , silent = 2
+           , refresh = 0
+           , cores = 4)
+fit2
+```
+
+b.
+
+```{r drawfromprior, cache = T}
+prior2 <- brm(data = nuttiesdat
+           , weight  ~ 0 + Intercept
+           , prior = nuttiesprior2
+           , sample_prior = "only"
+           , iter = 2500
+           , warmup = 1000
+           , silent = 2
+           , refresh = 0
+           , cores = 4)
+prior_draws <- posterior_predict(prior2)
+```
+
+```{r priorpredviz2, cache =T, eval = TRUE, echo = TRUE, fig.asp = .5, dpi = 150, out.width=600, warning = F}
+bayesplot::ppc_dens_overlay(nuttiesdat$weight, prior_draws[1:500,]) + 
+  theme_light(base_size = 16)
+```
+
+c.
+
+```{r postpredviz2, cache =T, eval = TRUE, echo = TRUE, fig.asp = .5, dpi = 150, out.width=600, warning = F}
+post_draws <- posterior_predict(fit2)
+
+bayesplot::ppc_dens_overlay(nuttiesdat$weight, post_draws[1:500,]) + 
+  theme_light(base_size = 16)
+```
+
+In comparison, let's check the original priors:
+
+```{r postpredviz1, cache =T, eval = TRUE, echo = TRUE, fig.asp = .5, dpi = 150, out.width=600, warning = F}
+post_draws <- posterior_predict(fit)
+
+bayesplot::ppc_dens_overlay(nuttiesdat$weight, post_draws[1:500,]) + 
+  theme_light(base_size = 16)
+```
+
+# Exercise 4: Your visualization set
+
+Generate a script with some useful visualizations for your personal Bayesian workflow. Include Prior and Posterior prediction, visualization of the posterior distributions, and anything else you find useful. Also note which visualizations can be reused on a regular basis and which depend a lot on the model/data at hand.
