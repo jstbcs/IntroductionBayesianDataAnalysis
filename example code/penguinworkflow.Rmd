@@ -40,7 +40,7 @@ library(bayesplot)   # Model output graphs
 options(mc.cores = parallel::detectCores())
 rstan_options(auto_write = TRUE)
 options(contrasts = c("contr.equalprior_pairs", "contr.poly"))
-set.seed(1234) # Zur Reproduzierbarkeit
+set.seed(1234) # For reproducibility
 ```
 
 
