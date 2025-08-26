@@ -7,7 +7,7 @@
 #################################################################
 
 # Specify the data, to be used in the likelihood function.
-myData <- c(rep(0,6), rep(1,14))
+myData <- c(rep(0,8), rep(1,32))
 
 # Define the Bernoulli likelihood function, p(D|theta).
 # The argument theta could be a vector, not just a scalar.
@@ -57,11 +57,11 @@ nRejected <- 0
 # set.seed(47405) # comment out to create different graphs
 
 # Specify standard deviation of proposal distribution:
-proposalSD <- c(0.02,0.2,2.0)[2] # vary the proposal standard deviation
+proposalSD <- c(0.02,0.2,2.0)[3] # vary the proposal standard deviation
 
 # Specify priors
-alpha <- 1
-beta <- 1
+alpha <- 4
+beta <- 4
 
 for ( t in 1:(NSamples - 1) ) {
 	currentPosition <- theta[t]

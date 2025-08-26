@@ -606,7 +606,7 @@ bayesplot::ppc_dens_overlay(df_spacebar$t, posterior.predictions[1:500,]) +
 
 ---
 
-```{r postpredviz, cache =T, eval = TRUE, echo = FALSE, fig.asp = .5, dpi = 150, out.width=600, warning = F}
+```{r postpredviz, cache =T, eval = TRUE, echo = FALSE, fig.asp = .5, dpi = 150, out.width=750, warning = F}
 prior.pred.means <- colMeans(t(prior.predictions))
 prior.pred.sd <- apply(t(prior.predictions), 2, sd)
 
