@@ -1,0 +1,109 @@
+---
+title: "Penguin workflow"
+author: "Nicole Cruz"
+date: "Last updated: `r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  pdf_document:
+    highlight: pygments
+#    toc: true
+#    toc_depth: 4
+urlcolor: teal
+toc-title: Inhalte
+header-includes:
+   - \usepackage{graphicx} 
+   - \usepackage[font=small,labelfont=bf]{caption}
+   - \usepackage{float} 
+   - \usepackage{xcolor}
+   - \definecolor{steelblue}{RGB}{70,130,180}
+   - \usepackage{amssymb}
+   - \usepackage{titling}
+   - \predate{\begin{center}\small}
+   - \postdate{\end{center}}
+---
+
+```{r setup, include=FALSE, error = F, warning = F, message = F}
+knitr::opts_chunk$set(echo = T, warning = F, error = F, message = F)
+```
+
+#### Packages
+
+```{r packages}
+library(tidyverse)   # Graphs mit ggplot()
+library(knitr)       # Tables mit kable() 
+library(ggokabeito)  # colorblind friendly colors
+library(brms)        # Hierarchical Bayesian models
+library(rstan)       # Interface to Stan
+library(shinystan)   # Model output graphs
+library(bayesplot)   # Model output graphs
+
+# General settings
+options(mc.cores = parallel::detectCores())
+rstan_options(auto_write = TRUE)
+options(contrasts = c("contr.equalprior_pairs", "contr.poly"))
+set.seed(1234) # Zur Reproduzierbarkeit
+```
+
+
+```{r brm m1}
+output1 <- capture.output(m1 <- brm(flipper_len ~ 1,
+                                   data = penguins,
+                                   family = gaussian(),
+                                   sample_prior = TRUE,
+                                   warmup = 1000, 
+                                   iter = 4000, # to later compute BFs
+                                   chains = 4, 
+                                   cores = 4,
+                                   save_pars = save_pars(all = TRUE), # to later compute BFs
+                                   control = list(adapt_delta = 0.99, 
+                                                  max_treedepth = 12))
+                                  )
+
+summary(m1, waic = TRUE)
+# plot(m1)
+# m1$fit
+default_prior(m1)
+```
+
+```{r brm m2}
+output2 <- capture.output(m2 <- brm(flipper_len ~ bill_len,
+                                   data = penguins,
+                                   family = gaussian(),
+                                   sample_prior = TRUE,
+                                   warmup = 1000, 
+                                   iter = 4000, # to later compute BFs
+                                   chains = 4, 
+                                   cores = 4,
+                                   save_pars = save_pars(all = TRUE), # to later compute BFs
+                                   control = list(adapt_delta = 0.99, 
+                                                  max_treedepth = 12))
+                                  )
+```
+
+```{r brm m3}
+output3 <- capture.output(m3 <- brm(flipper_len ~ bill_len + bill_dep,
+                                   data = penguins,
+                                   family = gaussian(),
+                                   sample_prior = TRUE,
+                                   warmup = 1000, 
+                                   iter = 4000, # to later compute BFs
+                                   chains = 4, 
+                                   cores = 4,
+                                   save_pars = save_pars(all = TRUE), # to later compute BFs
+                                   control = list(adapt_delta = 0.99, 
+                                                  max_treedepth = 12))
+                                  )
+```
+
+```{r posteriors}
+mcmc_areas(m3, prob = 0.95
+           , pars = c("b_bill_len", "b_bill_dep", "sigma")) 
+```
+
+```{r bf 1}
+mar1 <- bridge_sampler(m1, silent = T)
+mar2 <- bridge_sampler(m2, silent = T)
+mar3 <- bridge_sampler(m3, silent = T)
+bf_12 <- bayes_factor(mar1, mar2)
+bf_23 <- bayes_factor(mar2, mar3)
+bf_13 <- bayes_factor(mar1, mar3)
+```
