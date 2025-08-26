@@ -28,8 +28,8 @@ knitr::opts_chunk$set(echo = T, warning = F, error = F, message = F)
 #### Packages
 
 ```{r packages}
-library(tidyverse)   # Graphs mit ggplot()
-library(knitr)       # Tables mit kable() 
+library(tidyverse)   # Graphs with ggplot()
+library(knitr)       # Tables with kable() 
 library(ggokabeito)  # colorblind friendly colors
 library(brms)        # Hierarchical Bayesian models
 library(rstan)       # Interface to Stan
@@ -94,7 +94,7 @@ output3 <- capture.output(m3 <- brm(flipper_len ~ bill_len + bill_dep,
                                   )
 ```
 
-```{r posteriors}
+```{r posteriors, fig.width = 3, fig.height = 3, fig.align = "center", fig.cap = "Posterior parameter distributions to complement the Bayes factor."}
 mcmc_areas(m3, prob = 0.95
            , pars = c("b_bill_len", "b_bill_dep", "sigma")) 
 ```
