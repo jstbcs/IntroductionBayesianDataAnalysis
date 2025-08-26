@@ -1,0 +1,665 @@
+---
+title     : "<small>Introduction to Bayesian Data Analysis</small>"
+subtitle  : "Lecture 6: Generalized Linear Model"
+author    : "<br />Julia Haaf"
+date      : "<small>Summer 2025</small>"
+
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    self_contained: true
+    chakra: libs/remark-latest.min.js
+    css: ["src/xaringan-themer.css", "src/slides.css", "hygge"]
+    nature:
+      countIncrementalSlides: false
+header-includes:
+  - \usepackage{xcolor}
+  - \usepackage{amsmath} % not really used here
+  - \DeclareMathSymbol{\qm}{\mathalpha}{operators}{"3F}
+  - \DeclareMathAlphabet{\mathbbold}{U}{bbold}{m}{n}
+
+---
+
+exclude: true
+
+```{r setup, included = FALSE}
+library("knitr")
+library(kableExtra)
+library(tidyverse)
+library(psych)
+options(htmltools.dir.version = FALSE)
+opts_chunk$set(echo = FALSE, fig.align = "center")
+
+# remotes::install_github("gadenbuie/xaringanExtra")
+library("xaringanExtra")
+library("xaringanthemer")
+
+my_colors <- c("#495e8c", "#ef9ada")
+
+library("ggplot2")
+library(diagram)
+```
+
+```{r extras-styling, include = FALSE}
+use_xaringan_extra(c("tile_view", "clipboard")) #, "broadcast", "webcam", "animate_css"
+
+# style_mono_light("#32475b")
+style_mono_accent(
+  base_color = my_colors[1]
+  # , title_slide_background_image = "src/uva.svg"
+  , header_font_google = google_font("Poppins")
+  , header_h1_font_size = "36pt"
+  , text_font_google = google_font("Open Sans")
+  , text_font_size = "20pt"
+  , text_color = "#3a3a3a"
+  , outfile = "src/xaringan-themer.css"
+)
+```
+
+```{r}
+add_overlay <- function(..., label = NULL, label_style = NULL) {
+  el <- list(...)
+  
+  y <- '<div id="overlay-highlight"'
+  if(length(el) > 0) {
+    y <- c(y, 'style="', glue::glue('{names(el)}:{el};'))
+  }
+  y <- c(y, '">')
+  
+  if(!is.null(label)) {
+    y <- c(y, glue::glue('<span" class="vertical-center"" style="{label_style}">{label}</span>'))
+  }
+  
+  knitr::asis_output(glue::glue_collapse(c(y, "</div>")))
+}
+```
+
+<script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.js"></script>
+<script type="module">
+import mediumZoom from 'https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.esm.js'
+
+const zoomDefault = mediumZoom('#zoom-default')
+const zoomMargin = mediumZoom('#zoom-margin', { margin: 45 })
+</script>
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  "HTML-CSS": {
+    scale: 150
+  }
+});
+</script>
+
+---
+
+### Background
+
+- GLMs are a big deal in frequentist stats
+--
+
+    + Do you use `glm` or `lme`?!?
+--
+- In Bayesian stats, we are used of thinking about our entire model more deliberately, including which model of the data to use.
+--
+
+- Yet, choosing between probability distributions for the data and interpreting the results requires a bit more thought than with linear models.
+
+---
+
+### Overview
+
+.smaller-font[
+1. An Example
+2. Model
+    + Generalized Linear Model
+    + Model of the Data
+    + Prior
+3. Estimate the Model
+    + Model in `brms`
+    + Interpretation of the Results
+4. Model fit
+    + Posterior prediction
+    + Model comparison
+]
+
+---
+layout:true
+
+.pull-right-30[
+```{r out.width = "80%"}
+include_graphics("src/mentalhealth.png")
+```
+]
+
+### An Example
+
+---
+
+Can mental health be predicted by daily habits and stress?
+
+--
+
+
+```{r echo = T}
+mentalhealth.dat <- read.csv("data/mental_health_dataset.csv")
+
+knitr::kable(head(mentalhealth.dat[, c(2,6,9,10,11,12)]))%>%
+  kable_styling(font_size = 16)
+```
+
+---
+
+"Do you have a mental illness?"
+
+```{r echo = T}
+table(mentalhealth.dat$Mental_Health_Condition)
+```
+
+---
+
+```{r echo = T, fig.asp = .7, out.width=450, dpi = 150}
+library("psych")
+multi.hist(mentalhealth.dat[, c(2, 10:12)])
+```
+
+---
+layout:false
+class: inverse, middle, center
+
+# The Model
+
+What does a meaningful model for this data look like?
+
+---
+
+### The Model
+
+- Linear regression:
+
+$$Y_i \sim \mbox{Normal}(\mu_i, \sigma^2)$$
+$$\mu_i = \beta_0 + x_{i, 1}\beta_1 + x_{i, 2}\beta_2$$
+
+--
+
+- Extension:
+
+$$Y_i \sim \mbox{Normal}(\mu_i, \sigma^2)$$
+$$\mu_i = \beta_0 + x_{i, 1}\beta_1 + x_{i, 2}\beta_2 + \ldots + x_{i, n}\beta_n$$
+
+
+--
+
+Problems?
+
+$Y_i:$ Does the $i$th person have mental problems? $\rightarrow$ Yes/No (1/0)
+
+---
+layout:true
+
+### Statistical Model
+
+---
+
+$Y_i:$ Does the $i$th person have mental problems? $\rightarrow$ Yes/No (1/0)
+
+--
+
+- $Y_i \sim \mbox{Binomial}(n, \theta_i),$
+- $0 > \theta > 1, n = ?$
+
+--
+
+$$??? \; \theta_i = \beta_0 + x_{i, 1}\beta_1 + x_{i, 2}\beta_2 + \ldots + x_{i, n}\beta_n \; ???$$
+
+--
+
+```{r, fig.asp = .6, dpi = 150, out.width=450}
+par(mgp = c(2, .7, 0), mar = c(4,4,.5, .5))
+regfun <- function(x) .5 + .1 * x
+x <- seq(-7, 7, 1)
+plot(x, regfun(x), type = "l"
+     , lwd = 2, lty = 2, col = 2
+     , ylab = expression(theta), yaxt = "n")
+polygon(c(-8, 8, 8, -8)
+        , c(0,0,1,1), border = NA, col = adjustcolor(1, .1))
+x <- c(-5, 5)
+lines(x, regfun(x), lwd = 3)
+axis(2, c(0, 1))
+```
+
+---
+layout:true
+
+### Generalized Linear Model
+
+---
+
+#### Link Function $g(\cdot)$
+
+- Goal: Connect the linear model with the parameter to be estimated (here: probability)
+--
+
+- For $0, 1$ responses, the link function used is the logit transformation:
+    $\mu_i = g(\theta_i) = \log\Big( \frac{\theta_i}{1 - \theta_i}\Big)$
+--
+
+```{r, fig.asp = .7, dpi = 100, out.width=300}
+x <- seq(0, 1, .01)
+y <- logit(x)
+
+par(mgp = c(2, .7, 0), mar = c(4,4,.5, .5), cex = 2)
+plot(x, y, type = "l", lwd = 5
+     , ylab = expression(mu), xlab = expression(theta)
+     , frame.plot = F
+     )
+```
+
+---
+
+Using the link function, we go from the probability space into the "logit space"$\rightarrow$ $\mu$ can be between $-\infty$ and $\infty$.
+
+--
+
+#### Linear Model
+
+$$\mu_i = \log\Big( \frac{\theta_i}{1 - \theta_i}\Big) = \beta_0 + x_{i, 1}\beta_1 + x_{i, 2}\beta_2 + \ldots + x_{i, n}\beta_n$$
+
+---
+
+.content-box-blue[
+.small[
+The generalized linear model specifies the probability distribution of a random variable and a link function that allows flexible use of linear regression models.
+]
+]
+
+--
+
+```{r, fig.asp = .4, dpi =150, out.width=600}
+layout(matrix(1:3, ncol = 3))
+par(mgp = c(2, .7, 0), mar = c(3,3,3, .5), cex = 0.9)
+
+x <- seq(0, 10, 1)
+y <- dbinom(x, 10, .7)
+plot(x, y, type = "h", lwd = 3
+     , main = "Binomial"
+     , frame.plot = F)
+
+x <- seq(0, 15, 1)
+y <- dpois(x, lambda = 3)
+plot(x, y, type = "h", lwd = 3
+     , main = "Poisson"
+     , frame.plot = F)
+
+x <- seq(0, 5, .01)
+y <- dlnorm(x)
+plot(x, y, type = "l", lwd = 3
+     , main = "Lognormal"
+     , frame.plot = F)
+```
+
+---
+
+#### Inverse Function $g^{-1}(\cdot)$
+
+- To get from $\mu_i$ back to $\theta_i$ we use the inverse of the logit function:
+    $$\theta_i = g^{-1}(\mu_i) = \frac{e^{\mu_i}}{1 + e^{\mu_i}}$$
+--
+
+```{r, fig.asp = .5, dpi = 100, out.width=450}
+layout(matrix(1:2, ncol = 2))
+par(mgp = c(1.7, .7, 0), mar = c(3,3,1, .5), cex = 1.3)
+
+x <- seq(0, 1, .01)
+y <- logit(x)
+plot(x, y, type = "l", lwd = 3
+     , ylab = expression(mu), xlab = expression(theta)
+     , frame.plot = F
+     , xaxt = "n"
+     )
+axis(1, seq(0, 1, .5))
+mtext(expression("g("~ theta ~")"), line = -.5, cex = 1.5)
+
+x <- seq(0, 1, .01)
+y <- logit(x)
+plot(y, x, type = "l", lwd = 3
+     , ylab = expression(theta), xlab = expression(mu)
+     , frame.plot = F
+     , yaxt = "n"
+     )
+axis(2, seq(0, 1, .5))
+mtext(expression("g"^-1 ~ "(" ~ theta ~")"), line = -.5, cex = 1.5)
+```
+
+---
+layout:true
+
+### Statistical Model
+
+---
+
+- $Y_i \sim \mbox{Binomial}(1, \theta_i),$
+
+--
+
+- Predictors
+    - $x_{i, 1}$: Age
+    - $x_{i, 2}$: Stress level (high = 1, not high = 0)
+    - $x_{i, 3}$: Stress level (medium = 1, not medium = 0)
+    - $x_{i, 4}$: Sleep in hours
+    - $x_{i, 5}$: Work time per week in hours
+    - $x_{i, 6}$: Physical activity per week in hours
+--
+- $\mu_i = \log\Big( \frac{\theta_i}{1 - \theta_i}\Big) = \beta_0 + x_{i, 1}\beta_1 + x_{i, 2}\beta_2 + \ldots + x_{i, 6}\beta_6$
+
+---
+
+### How Does the Model Work?
+
+- $Y_i \sim \mbox{Binomial}(1, \theta_i),$
+- $\mu_i = \log\Big( \frac{\theta_i}{1 - \theta_i}\Big) = \beta_0 + x_{i, 1}\beta_1 + x_{i, 2}\beta_2 + \ldots + x_{i, 6}\beta_6$
+    
+--
+
+- Example:
+
+$\mu_i = -5 + x_{i, 1}0.1 + x_{i, 2}1 + x_{i, 3}0.5 + x_{i, 4}(-0.3) +$
+
+$\; \; \; \; \; \; \; \; \;x_{i, 5} 0.1 + x_{i, 6} (-0.2)$
+
+---
+
+$\mu_i = -5 + x_{i, 1}0.1 + x_{i, 2}1 + x_{i, 3}0.5 + x_{i, 4}(-0.3) +$
+
+$\; \; \; \; \; \; \; \; \;x_{i, 5} 0.1 + x_{i, 6} (-0.2)$
+
+--
+
+.smaller-font[
+- Age = 40
+- Stress level = medium
+- Sleep in hours = 7
+- Work hours per week = 32
+- Physical activity per week = 8
+]
+
+--
+    
+$\mu_i = -5 + 40 \times 0.1 + 0 \times 1 + 1 \times 0.5 + 7 \times (-0.3) +$
+
+$\; \; \; \; \; \; \; \; \;32 \times 0.1 + 8 \times (-0.2) = `r -5 + 40*0.1+0.5+7*(-0.3)+32*0.1+8*(-0.2)`$
+
+---
+
+$\mu_i = -5 + 40 \times 0.1 + 0 \times 1 + 1 \times 0.5 + 7 \times (-0.3) +$
+
+$\; \; \; \; \; \; \; \; \;32 \times 0.1 + 8 \times (-0.2) = `r -5 + 40*0.1+0.5+7*(-0.3)+32*0.1+8*(-0.2)`$
+
+The probability of mental problems is then $\theta_i = g^{-1}(-1) = \frac{e^{-1}}{1 + e^{-1}} = `r round(boot::inv.logit(-1), 2)`$
+
+---
+
+.smaller-font[
+- Age = 50
+- Stress level = high
+- Sleep in hours = 5
+- Work hours per week = 60
+- Physical activity per week = 0
+]
+    
+$\mu_i = -5 + 50 \times 0.1 + 1 \times 1 + 0 \times 0.5 + 5 \times (-0.3) +$
+
+$\; \; \; \; \; \; \; \; \;60 \times 0.1 + 0 \times (-0.2) = `r -5 + 50*0.1+1+5*(-0.3)+60*0.1+5*(-0.2)`$
+
+--
+
+The probability of mental problems is then $\theta_i = g^{-1}(4.5) = \frac{e^{4.5}}{1 + e^{4.5}} = `r round(boot::inv.logit(4.5), 2)`$
+
+
+---
+layout:true
+
+### Prior
+
+- $Y_i \sim \mbox{Binomial}(1, \theta_i),$
+- $\mu_i = \log\Big( \frac{\theta_i}{1 - \theta_i}\Big) = \beta_0 + x_{i, 1}\beta_1 + x_{i, 2}\beta_2 + \ldots + x_{i, 6}\beta_6$
+
+---
+
+What parameters do we need in the model?
+
+--
+
+- All parameters!
+    + $\beta_0, \beta_1, \beta_2, \beta_3, \beta_4, \beta_5, \beta_6$
+    + Normal distribution
+
+--
+
+- What about $\sigma$?
+
+---
+
+.pull-right-50[
+- $x_{i, 1}$: Age
+- $x_{i, 2}$: Stress level high
+- $x_{i, 3}$: Stress level med
+- $x_{i, 4}$: Sleep in hours
+- $x_{i, 5}$: Work hours
+- $x_{i, 6}$: Physical activity
+]
+
+.pull-left-50[
+```{r, fig.asp = 0.6, dpi = 100, out.width=400}
+par(cex = 1.3, mar = c(4,4,.5,.5), cex = 1.2)
+x <- seq(-5, 5, .1)
+plot(x, dnorm(x, 0, 0.5), type = "l", lwd = 3, col = "darkgray"
+     , ylab = "Density", xlab = expression(beta))
+lines(x, dnorm(x, 0, 1), col = "darkgray", lwd = 3)
+lines(x, dnorm(x, 0, 3), col = "darkgray", lwd = 3)
+lines(x, dnorm(x, 0, 5), col = "darkgray", lwd = 3)
+```
+]
+
+---
+
+```{r echo = T, message=FALSE}
+library(brms)
+
+# default_prior(Mental_Health_Condition ~ Age + 
+#                 Stress_Level + Sleep_Hours + Work_Hours 
+#                 + Physical_Activity_Hours
+#               , family = bernoulli(link = "logit")
+#               , data = mentalhealth.dat)
+
+bprior <- c(prior(normal(0, 3), class = Intercept)
+            , prior(normal(0, 0.5), class = b))
+```
+
+---
+layout:false
+class: inverse, middle, center
+
+# Estimating the Model
+
+---
+layout:true
+
+### Estimating the Model
+
+---
+
+```{r brm_model, echo = T, cache=T, eval = T}
+model.1 <- brm(Mental_Health_Condition ~ Age + 
+                 Stress_Level + Sleep_Hours + Work_Hours
+                 + Physical_Activity_Hours
+               , family = bernoulli(link = "logit")
+               , data = mentalhealth.dat
+               , prior = bprior)
+```
+
+---
+
+```{r echo = T, eval = T}
+summary(model.1)
+```
+
+---
+
+```{r, eval = T}
+library(kableExtra)
+out.1 <- summary(model.1)
+knitr::kable(round(out.1$fixed, 2)) %>%
+  kable_material(c("striped", "hover")) %>%
+  kable_styling(font_size = 14)
+```
+
+---
+
+```{r, fig.asp = .5, dpi = 150, out.width=650, message=FALSE, eval = T}
+library(tidybayes)
+
+model.1 %>%
+  tidy_draws() %>%
+  pivot_longer(cols = starts_with("b_"),
+    names_to = "parameter",
+    names_prefix = "b_",
+    values_to = "estimate") %>%
+  ggplot(aes(y = parameter, x = estimate)) +
+  stat_pointinterval(.width = c(.5, 0.95)) +
+  geom_vline(xintercept = 0) +
+  theme_classic(base_size = 20) +
+  theme(axis.title.y=element_blank())
+```
+
+---
+layout:true
+
+### Posterior Prediction
+
+---
+
+.smaller-font[
+Does the model accurately predict the response category for mental disorder?
+]
+
+.small-code[
+```{r, echo = T, eval = T}
+post.pred <- posterior_predict(model.1) #as before
+post.pred.mean <- colMeans(post.pred) #as before
+
+# Median and prediction interval for y
+post.pred.dat <- tapply(post.pred.mean
+                        , mentalhealth.dat$Mental_Health_Condition
+                        , quantile, probs = c(.025, .5, .975))
+```
+]
+
+--
+
+```{r fig.asp=.7, dpi = 150, out.width=350, echo = F, eval = T}
+post.pred.dat <- as.data.frame(rbind(post.pred.dat$Yes, post.pred.dat$No))
+colnames(post.pred.dat) <- c("lower", "median", "upper")
+post.pred.dat$mental.health.condition <- c("yes", "no")
+
+ggplot(post.pred.dat) +
+    geom_bar(aes(x = mental.health.condition, y = median), stat = "identity", fill = "skyblue", alpha = 0.7) +
+    geom_errorbar(aes(x = mental.health.condition, ymin=lower, ymax=upper), width=0.4, colour="orange", alpha=0.9, linewidth=1.3)+
+  theme_classic(base_size = 20)
+```
+
+---
+
+```{r fig.asp=.7, dpi = 150, out.width=350, echo = T, eval = F}
+# tapply gives a matrix, for ggplot we need a data frame
+post.pred.dat <- as.data.frame(rbind(post.pred.dat$Yes
+                                     , post.pred.dat$No))
+
+# Naming the columns and rows
+colnames(post.pred.dat) <- c("lower", "median", "upper")
+post.pred.dat$mental.health.condition <- c("yes", "no")
+
+ggplot(post.pred.dat) +
+    geom_bar(aes(x = mental.health.condition
+                 , y = median)
+             , stat = "identity"
+             , fill = "skyblue"
+             , alpha = 0.7) +
+    geom_errorbar(aes(x = mental.health.condition
+                      , ymin=lower
+                      , ymax=upper)
+                  , width=0.4, colour="orange"
+                  , alpha=0.9, linewidth=1.3)+
+  theme_classic(base_size = 20)
+```
+
+---
+layout:true
+
+### Model Comparison
+
+---
+
+Is the model informative overall?
+
+--
+
+$\rightarrow$ Comparison with a model without predictors
+
+--
+
+```{r bf, cache = T, echo = T, message=F, warning=F}
+model.1 <- brm(Mental_Health_Condition ~ Age + 
+                 Stress_Level + Sleep_Hours + Work_Hours
+                 + Physical_Activity_Hours
+               , family = bernoulli(link = "logit")
+               , data = mentalhealth.dat
+               , prior = bprior
+               , save_pars = save_pars(all = TRUE)
+               , iter = 11000
+               , warmup = 1000
+               , silent = 2
+               , refresh = 0)
+
+bprior <- c(prior(normal(0, 3), class = Intercept))
+
+model.0 <- brm(Mental_Health_Condition ~ 1
+               , family = bernoulli(link = "logit")
+               , data = mentalhealth.dat
+               , prior = bprior
+               , save_pars = save_pars(all = TRUE)
+               , iter = 11000
+               , warmup = 1000
+               , silent = 2
+               , refresh = 0)
+```
+
+---
+
+```{r bridge, echo = T, message=FALSE, cache = T}
+bayes_factor(model.0, model.1)
+```
+
+---
+
+.pull-right-50[
+```{r out.width = "95%"}
+include_graphics("src/learnednothing.jpg")
+```
+]
+
+--
+
+- Strong evidence against effects of all predictors.
+--
+
+- Prevalence for a mental disorder cannot be predicted by age, life habits, and stress (for this dataset).
+--
+
+- Possible reasons?
+
+
+---
+class: inverse, middle, center
+layout:false
+
+:)
