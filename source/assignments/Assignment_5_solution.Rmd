@@ -1,0 +1,154 @@
+---
+title: "Assignment 5 - Solutions"
+author: "Julia Haaf & Nicole Cruz, adapted from Shravan Vasishth"
+date: ""
+output: pdf_document
+---
+
+```{r setup, include=FALSE, error = F, warning = F, message = F}
+knitr::opts_chunk$set(echo = T, warning = F, error = F, message = F)
+#source("index.R")
+```
+
+
+# Exercise 1
+
+```{r packages}
+library(tidyverse)
+library(brms)
+```
+```{r}
+load("df_pupil_complete.rda")
+df_pupil_complete <- df_pupil_complete %>%
+  mutate(c_load = load - mean(load))
+```
+
+Fit a "maximal" model (correlated varying intercept and slopes for subjects) assuming a normal likelihood.
+
+```{r fitpupil, message = FALSE, results = "hide",cache=TRUE}
+fit_pupil <- brm(p_size ~ 1 + c_load + (c_load | subj),
+  data = df_pupil_complete,
+  family = gaussian(),
+  prior = c(
+    prior(normal(1000, 500), class = Intercept),
+    prior(normal(0, 1000), class = sigma),
+    prior(normal(0, 100), class = b, coef = c_load),
+    prior(normal(0, 1000), class = sd),
+    prior(lkj(2), class = cor)),
+  control=list(adapt_delta=0.99, max_treedepth=15))
+```
+
+### (a)  Examine the effect of load on pupil size, and the average pupil size.
+
+```{r}
+fit_pupil
+```
+
+If we want to just report the change in pupil size as a function of one unit increase in (centered) load:
+
+```{r}
+posterior_summary(fit_pupil, variable = "b_c_load")
+```
+
+There isn't a clear effect of load across all the subject.
+
+But the intercept seems to be quite large,
+
+```{r}
+posterior_summary(fit_pupil, variable = "b_Intercept")
+```
+
+and we assumed that it shouldn't be:
+
+```{r}
+brms::prior_summary(fit_pupil)
+```
+
+See the row with class Intercept.
+
+So maybe our prior for the intercept was overly informative.
+
+
+## (b) Do a sensitivity analysis for the prior on the intercept ($\alpha$). What is the estimate of the effect ($\beta$) under different priors?
+
+We'll try a wider prior for $\alpha$. A more complete sensitivity analysis would investigate several possible priors
+
+$$\alpha \sim \mathit{Normal(4000,2000)}$$
+
+```{r fitpupil2, message = FALSE, results = "hide",cache=TRUE}
+fit_pupil_2 <- brm(p_size ~ 1 + c_load + (c_load | subj),
+  data = df_pupil_complete,
+  family = gaussian(),
+  prior = c(
+    prior(normal(4000, 2000), class = Intercept),
+    prior(normal(0, 1000), class = sigma),
+    prior(normal(0, 100), class = b, coef = c_load),
+    prior(normal(0, 2000), class = sd),
+  prior(lkj(2), class = cor))
+)
+```
+
+```{r}
+fit_pupil_2
+```
+
+Now there seems to be a clear effect! Our bad prior for the intercept was messing up our inferences!
+
+## (c) Is the effect of load consistent across subjects?
+
+```{r}
+## For the hierarchical model, this is more complicated,
+# because we want the effect (beta) + adjustment:
+# we extract the overall group level effect:
+beta <- c(as_draws_df(fit_pupil_2)$b_c_load)
+# We extract the individual adjustments
+ind_effects_v <- paste0("r_subj[", unique(df_pupil_complete$subj), ",c_load]")
+adjustment <- as.matrix(as_draws_df(fit_pupil)[ind_effects_v])
+# We get the by subject effects in a data frame where each adjustment
+# is in each column.
+by_subj_effect <- as_tibble(beta + adjustment)
+# We summarize them by getting a table with the mean and the
+# quantiles for each column and then binding them.
+par_h <- lapply(by_subj_effect, function(x) {
+  tibble(
+    Estimate = mean(x),
+    Q2.5 = quantile(x, .025),
+    Q97.5 = quantile(x, .975)
+  )
+}) %>%
+  bind_rows() %>%
+  # We add a column to identify that the model,
+  # and one with the subject labels:
+  mutate(
+    subj = unique(df_pupil_complete$subj))%>%
+  arrange(Estimate) %>%
+  mutate(subj = factor(subj, levels = subj))
+
+
+ggplot(
+  par_h,
+  aes(
+    ymin = Q2.5, ymax = Q97.5, x = subj, y = Estimate
+  )
+) +
+  geom_errorbar() +
+  geom_point() +
+  # We'll also add the mean and 95% CrI of the overall difference
+  # to the plot:
+  geom_hline(
+    yintercept =
+      posterior_summary(fit_pupil_2)["b_c_load", "Estimate"]
+  ) +
+  geom_hline(
+    yintercept =
+      posterior_summary(fit_pupil_2)["b_c_load", "Q2.5"],
+    linetype = "dotted", linewidth = 0.5
+  ) +
+  geom_hline(
+    yintercept =
+      posterior_summary(fit_pupil_2)["b_c_load", "Q97.5"],
+    linetype = "dotted", linewidth = 0.5
+  ) +
+  xlab("Change in pupil size") +
+  coord_flip()
+```
