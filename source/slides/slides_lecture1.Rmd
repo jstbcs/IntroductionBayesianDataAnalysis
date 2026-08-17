@@ -2,7 +2,7 @@
 title     : "<small>Introduction to Bayesian Data Analysis</small>"
 subtitle  : "Lecture 1"
 author    : "<br />Julia Haaf"
-date      : "<small>Summer 2025</small>"
+date      : "<small>Summer 2026</small>"
 
 output:
   xaringan::moon_reader:
@@ -88,28 +88,39 @@ MathJax.Hub.Config({
 </script>
 
 ---
+class: medium-font
 
 # Who are we?
 
 .pull-right-30[
-```{r out.width = "70%"}
+```{r out.width = "40%"}
 include_graphics("src/nicole_c.png")
 ```
 
-```{r out.width = "70%"}
-include_graphics("src/JuliaH_01.jpg")
+```{r out.width = "40%"}
+include_graphics("src/Julia.jpeg")
+```
+
+```{r out.width = "40%"}
+include_graphics("src/Anne.jpeg")
+```
+
+```{r out.width = "40%"}
+include_graphics("src/Leonardo.jpg")
 ```
 ]
 
 - Dr. Nicole Cruz
     + Postdoc, University of Potsdam
 
-<br>
-
-<br>
-
-- Dr. Julia Haaf
+- Prof. Dr. Julia Haaf
     + Professor, University of Potsdam
+
+- Anne Giacobello
+    + PhD student, University of Potsdam
+    
+- Leonardo Concetti
+    + Postdoc, University of Potsdam
 
 ---
 class: middle, center
@@ -209,6 +220,7 @@ $\rightarrow$ Statistical Model = Probability Distribution
 
   + blank screen (200 ms)
 --
+
   + cross in the middle of a screen
   + as soon as they see the cross, they tap on the space bar as fast as they can until the experiment is over (361 trials). 
 --
@@ -254,7 +266,7 @@ layout:true
 
 .pull-right-45[
 ```{r out.width = "85%"}
-include_graphics("src/frank5.jpeg")
+include_graphics("src/frank4.jpeg")
 ```
 
 ]
@@ -273,7 +285,7 @@ layout:true
 
 .pull-right-25[
 ```{r out.width = "95%"}
-include_graphics("src/frank5.jpeg")
+include_graphics("src/frank4.jpeg")
 ```
 
 ]
@@ -475,7 +487,7 @@ plot(x, y3, type = "l", lwd = 4, col = cols[3], ylim = c(0, 1.5), yaxt = "n", yl
 
 .pull-right-25[
 ```{r out.width = "95%"}
-include_graphics("src/frank5.jpeg")
+include_graphics("src/frank4.jpeg")
 ```
 ]
 
@@ -788,7 +800,7 @@ layout:true
 
 .pull-right-25[
 ```{r out.width = "95%"}
-include_graphics("src/frank5.jpeg")
+include_graphics("src/frank4.jpeg")
 ```
 
 ]
