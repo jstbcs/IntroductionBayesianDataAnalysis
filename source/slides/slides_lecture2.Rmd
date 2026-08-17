@@ -2,7 +2,7 @@
 title     : "<small>Introduction to Bayesian Data Analysis</small>"
 subtitle  : "Lecture 2: Analysis Sensitivity and a Bayesian Workflow"
 author    : "<br />Julia Haaf"
-date      : "<small>Summer 2025</small>"
+date      : "<small>Summer 2026</small>"
 
 output:
   xaringan::moon_reader:
