@@ -1,15 +1,15 @@
 ---
-title: "Assignment 2"
+title: "Assignment 3 - with responses"
 author: "Julia Haaf & Nicole Cruz"
 date: ""
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, error = FALSE)
 ```
 
-```{r echo = T}
+```{r packages}
 library(brms)
 library(ggplot2)
 ```
@@ -19,7 +19,7 @@ library(ggplot2)
 
 Generate some simulated independent and identically distributed data with $n=100$ data points as follows:
 
-```{r}
+```{r simulation a}
 y <- rnorm(100, mean = 500, sd = 50)
 ```
 
@@ -45,12 +45,12 @@ Generate posterior predictive distributions of the parameters and check that the
 
 Generate some simulated data with known parameter values:
 
-```{r}
+```{r simulation b}
 y<-rnorm(100,mean=500,sd=50)
 sim_dat<-data.frame(y=y)
 ```
 
-```{r model_1, echo=TRUE, message=FALSE, results="hide", cache = T}
+```{r model_1, results="hide", cache = T}
 sim_model <- brm(y ~ 1,
   data = sim_dat,
   family = gaussian(),
@@ -66,7 +66,7 @@ sim_model <- brm(y ~ 1,
 
 Look at the posterior distributions:
 
-```{r}
+```{r posteriors}
 plot(sim_model)
 ```
 
@@ -75,7 +75,7 @@ Confirm through visual inspect that the true values ($\mu=500, \sigma=50$) do fa
 
 # Exercise 2: Chocolate Bars
 
-```{r, echo = F}
+```{r chocodata, echo = F}
 weight <- round(rnorm(100, 48, 1.5), 2)
 nutties <- data.frame(nuddybuddy = 1:100
            , weight = weight)
@@ -94,18 +94,20 @@ c. Now fit the model properly with sufficient iterations. Visualize the posterio
 
 a.
 
-```{r}
+```{r choco-priors1}
 nuttiesdat <- read.csv("data/nutties.csv")
 
 nuttiesprior <- c(brms::prior(normal(50, 2)
                              , coef = Intercept)
                   , brms::prior(normal(3, 3)
                              , class = sigma))
+
 ```
 
 b. 
 
 ```{r modelfit-50, cache = T}
+output <- capture.output(
 fit <- brm(data = nuttiesdat
            , weight  ~ 0 + Intercept
            , prior = nuttiesprior
@@ -113,10 +115,12 @@ fit <- brm(data = nuttiesdat
            , warmup = 25
            , silent = 2
            , refresh = 0)
+)
 ```
 c.
 
-```{r modelfit, cache = T}
+```{r modelfit-5000, cache = T}
+output <- capture.output(
 fit <- brm(data = nuttiesdat
            , weight  ~ 0 + Intercept
            , prior = nuttiesprior
@@ -125,16 +129,19 @@ fit <- brm(data = nuttiesdat
            , silent = 2
            , refresh = 0
            , cores = 4)
+)
 fit
 ```
 
 ### Bayes factor
 
-```{r}
+```{r bf}
 nuttiespriorfixed <- c(brms::prior(constant(50)
                              , coef = Intercept)
                   , brms::prior(normal(3, 3)
                              , class = sigma))
+
+output <- capture.output(
 fit50 <- brm(data = nuttiesdat
            , weight  ~ 0 + Intercept
            , prior = nuttiespriorfixed
@@ -143,10 +150,11 @@ fit50 <- brm(data = nuttiesdat
            , silent = 2
            , refresh = 0
            , cores = 4)
+)
 fit50
 ```
 
-```{r}
+```{r bf-output}
 brms::bayes_factor(fit, fit50)
 ```
 
@@ -164,7 +172,7 @@ c. Generate posterior predictive distributions based on this prior and plot them
 
 a.
 
-```{r}
+```{r newprior}
 nuttiesprior2 <- c(brms::prior(normal(50, 0.1)
                              , coef = Intercept)
                   , brms::prior(normal(3, 3)
@@ -172,6 +180,7 @@ nuttiesprior2 <- c(brms::prior(normal(50, 0.1)
 ```
 
 ```{r modelfit2, cache = T}
+output <- capture.output(
 fit2 <- brm(data = nuttiesdat
            , weight  ~ 0 + Intercept
            , prior = nuttiesprior2
@@ -180,12 +189,14 @@ fit2 <- brm(data = nuttiesdat
            , silent = 2
            , refresh = 0
            , cores = 4)
+)
 fit2
 ```
 
 b.
 
 ```{r drawfromprior, cache = T}
+output <- capture.output(
 prior2 <- brm(data = nuttiesdat
            , weight  ~ 0 + Intercept
            , prior = nuttiesprior2
@@ -195,6 +206,7 @@ prior2 <- brm(data = nuttiesdat
            , silent = 2
            , refresh = 0
            , cores = 4)
+)
 prior_draws <- posterior_predict(prior2)
 ```
 
@@ -205,7 +217,7 @@ bayesplot::ppc_dens_overlay(nuttiesdat$weight, prior_draws[1:500,]) +
 
 c.
 
-```{r postpredviz2, cache =T, eval = TRUE, echo = TRUE, fig.asp = .5, dpi = 150, out.width=600, warning = F}
+```{r postpredviz2, cache =T, fig.asp = .5, dpi = 150, out.width=600}
 post_draws <- posterior_predict(fit2)
 
 bayesplot::ppc_dens_overlay(nuttiesdat$weight, post_draws[1:500,]) + 
@@ -214,7 +226,7 @@ bayesplot::ppc_dens_overlay(nuttiesdat$weight, post_draws[1:500,]) +
 
 In comparison, let's check the original priors:
 
-```{r postpredviz1, cache =T, eval = TRUE, echo = TRUE, fig.asp = .5, dpi = 150, out.width=600, warning = F}
+```{r postpredviz1, cache =T, fig.asp = .5, dpi = 150, out.width=600}
 post_draws <- posterior_predict(fit)
 
 bayesplot::ppc_dens_overlay(nuttiesdat$weight, post_draws[1:500,]) + 
