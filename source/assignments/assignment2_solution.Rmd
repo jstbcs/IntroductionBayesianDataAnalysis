@@ -65,7 +65,7 @@ bprior <- c(brms::prior(normal(3, 2), class = Intercept)
             , brms::prior(normal(0, 2.5), class = sigma))
 ```
 
-```{r modelest, cache = T, warning=T, message=T}
+```{r modelest, cache = T, warning=F, message=F}
 model.1 <- brm(ls ~ 1 + inc_hh
                , data = income
                , prior = bprior
@@ -95,7 +95,11 @@ $$\mu_i = \beta_0 + x_{i}\beta_1$$
 1a. The `ls`-values are between 1 and 5, so effects cannot be larger than one step on the life satisfaction scale. The mean is probably around 3. Sigma, the noise standard deviation can also not be bigger than 2-3 because of the range restriction of the data.
 
 ```{r eval = params$solution, echo = params$solution}
-dat <- data.frame(ls = rnorm(nrow(income), 2.5, 1), inc_hh = sample(1:12, size = nrow(income), replace = T))
+dat <- data.frame(ls = rnorm(nrow(income), 2.5, 1)
+                  , inc_hh = sample(1:12
+                                    , size = nrow(income)
+                                    , replace = T))
+output <- capture.output(
 model.prior.pred <- brm(ls ~ 1 + inc_hh
                , data = dat
                , prior = bprior
@@ -103,6 +107,7 @@ model.prior.pred <- brm(ls ~ 1 + inc_hh
                , silent = 2
                , refresh = 0
                , cores = 2)
+)
 
 prior.predictions <- posterior_predict(model.prior.pred)
 
@@ -122,8 +127,6 @@ cprior <- c(brms::prior(normal(3, 1), class = Intercept)
 model.2 <- brm(ls ~ 1 + inc_hh
                , data = income
                , prior = cprior
-               , silent = 2
-               , refresh = 0
                , cores = 4)
 model.2
 plot(model.2)
@@ -167,42 +170,48 @@ knitr::asis_output("<!--")
 
 1c.
 
-```{r eval = params$solution, echo = params$solution}
+```{r eval = params$solution, echo = params$solution, cache = T}
 cprior_a <- c(brms::prior(normal(3, .5), class = Intercept)
             , brms::prior(normal(0, .5), class = b, coef = inc_hh)
             , brms::prior(normal(0, .5), class = sigma))
+output <- capture.output(
 model.2_a <- brm(ls ~ 1 + inc_hh
                , data = income
                , prior = cprior_a
                , silent = 2
                , refresh = 0
                , cores = 4)
+)
 model.2_a
 ```
 
-```{r eval = params$solution, echo = params$solution}
+```{r eval = params$solution, echo = params$solution, cache = T}
 cprior_b <- c(brms::prior(normal(3, 2), class = Intercept)
             , brms::prior(normal(0, .5), class = b, coef = inc_hh)
             , brms::prior(normal(0, 2), class = sigma))
+output <- capture.output(
 model.2_b <- brm(ls ~ 1 + inc_hh
                , data = income
                , prior = cprior_b
                , silent = 2
                , refresh = 0
                , cores = 4)
+)
 model.2_b
 ```
 
-```{r eval = params$solution, echo = params$solution}
+```{r eval = params$solution, echo = params$solution, cache = T}
 cprior_c <- c(brms::prior(normal(3, 1), class = Intercept)
             , brms::prior(normal(-1, 1), class = b, coef = inc_hh)
             , brms::prior(normal(0, 1), class = sigma))
+output <- capture.output(
 model.2_c <- brm(ls ~ 1 + inc_hh
                , data = income
                , prior = cprior_c
                , silent = 2
                , refresh = 0
                , cores = 4)
+)
 model.2_c
 ```
 
@@ -225,6 +234,10 @@ knitr::asis_output("<!--")
 
 ```{r modelpostpred, eval = params$solution, echo = params$solution, cache = T, warning=T, message=T}
 post.pred.1 <- posterior_predict(model.2)
+
+bayesplot::ppc_dens_overlay(income$ls
+                            , post.pred.1[1:500,]) + 
+  theme_light(base_size = 16)
 
 par(mar = c(4,4,.5,.5), cex = 1.3, mgp = c(2, .7, 0))
 post.pred.mean.1 <- colMeans(post.pred.1)
