@@ -65,7 +65,7 @@ bprior <- c(brms::prior(normal(3, 2), class = Intercept)
             , brms::prior(normal(0, 2.5), class = sigma))
 ```
 
-```{r modelest, cache = T, warning=T, message=T}
+```{r modelest, cache = T, warning=T, message=T´}
 model.1 <- brm(ls ~ 1 + inc_hh
                , data = income
                , prior = bprior

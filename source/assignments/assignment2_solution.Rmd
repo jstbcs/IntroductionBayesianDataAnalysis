@@ -1,5 +1,5 @@
 ---
-title     : "Assignment 3 - Solution"
+title     : "Assignment 2"
 subtitle  : ""
 author    : "Nicole Cruz & Julia Haaf"
 date      : ""
@@ -55,7 +55,8 @@ Fit the following Bayesian model to assess the effect of household income on lif
 # Casewise exclusion of missing data
 income <- na.exclude(income)
 
-# This function can be used to figure out the structure of the priors for the sepcific model including names of the predictors
+# This function can be used to figure out the structure of the 
+# priors for the sepcific model including names of the predictors
 # default_prior(ls ~ inc_hh,
 #              data = income)
 
@@ -72,9 +73,9 @@ model.1 <- brm(ls ~ 1 + inc_hh
                , refresh = 0)
 ```
 
-a) Consider the priors. Do you think they are a good choice? What would you change (if anything).
+a) Consider the priors. Do you think they are a good choice? Run a prior prediction and change the priors if necessary.
 
-b) Ensure convergence and visuaalize the posterior distributions of all parameters. Interpret the results.
+b) Fit the model with the adjusted priors. Ensure convergence and visualize the posterior distributions of all parameters. Interpret the results.
 
 ```{r eval = !params$solution, echo = F}
 knitr::asis_output("<!--")
@@ -93,19 +94,50 @@ $$\mu_i = \beta_0 + x_{i}\beta_1$$
 
 1a. The `ls`-values are between 1 and 5, so effects cannot be larger than one step on the life satisfaction scale. The mean is probably around 3. Sigma, the noise standard deviation can also not be bigger than 2-3 because of the range restriction of the data.
 
+```{r eval = params$solution, echo = params$solution}
+dat <- data.frame(ls = rnorm(nrow(income), 2.5, 1), inc_hh = sample(1:12, size = nrow(income), replace = T))
+model.prior.pred <- brm(ls ~ 1 + inc_hh
+               , data = dat
+               , prior = bprior
+               , sample_prior = "only"
+               , silent = 2
+               , refresh = 0
+               , cores = 2)
+
+prior.predictions <- posterior_predict(model.prior.pred)
+
+bayesplot::ppc_dens_overlay(prior.predictions[1,], prior.predictions[1:500,], trim = T) + 
+  # xlim(-5, 10) +
+  theme_light(base_size = 16)
+```
+
+Life satisfaction is on a scale from 1 to 5, so the range should be smaller. 
+
 1b. 
 
 ```{r eval = params$solution, echo = params$solution}
-plot(model.1)
+cprior <- c(brms::prior(normal(3, 1), class = Intercept)
+            , brms::prior(normal(0, .5), class = b, coef = inc_hh)
+            , brms::prior(normal(0, 1), class = sigma))
+model.2 <- brm(ls ~ 1 + inc_hh
+               , data = income
+               , prior = cprior
+               , silent = 2
+               , refresh = 0
+               , cores = 4)
+model.2
+plot(model.2)
 ```
 
-None of the posterior credible intervals includes 0. For an increase of  10.000 Euros of household income there is an increase of life satsifaction of about 0.07 points.
+Convergence is good. $\hat{R}$ and ESS are in the range and the caterpillars are hairy.
+
+None of the posterior credible intervals includes 0. For an increase of 10.000 Euros of household income there is an increase of life satsifaction of about 0.07 points.
 
 ```{r eval = params$solution, echo = params$solution}
 ## Neue Daten werden erstellt, um die Regressionsgerade zu zeichnen
 nd <- tibble(inc_hh = -1:13, 2)
 ## Regression wird auf die neuen Daten angewendet
-f <- fitted(model.1, newdata = nd) %>% 
+f <- fitted(model.2, newdata = nd) %>% 
   as_tibble() %>%
   bind_cols(nd)
 income %>%
@@ -125,10 +157,7 @@ income %>%
 knitr::asis_output("-->")
 ```
 
-c) Is there evidence that household income influences life satisfaction? Compare Model 1 to an alternative model without the income effect using Bayes factor.
-
-d) Also compare the posterior prediction of the models. Is one of them better than the other?
-
+c) Conduct a sensitivity analysis by fitting the model using three different priors.
 
 ```{r eval = !params$solution, echo = F}
 knitr::asis_output("<!--")
@@ -138,26 +167,65 @@ knitr::asis_output("<!--")
 
 1c.
 
-```{r modelest2, cache = T, warning=T, message=T}
-bprior <- c(brms::prior(normal(3, 2), class = Intercept)
-            , brms::prior(normal(0, 2.5), class = sigma))
-
-model.0 <- brm(ls ~ 1
+```{r eval = params$solution, echo = params$solution}
+cprior_a <- c(brms::prior(normal(3, .5), class = Intercept)
+            , brms::prior(normal(0, .5), class = b, coef = inc_hh)
+            , brms::prior(normal(0, .5), class = sigma))
+model.2_a <- brm(ls ~ 1 + inc_hh
                , data = income
-               , prior = bprior
-               , silent = 2)
-
-bayes_factor(model.1, model.0)
+               , prior = cprior_a
+               , silent = 2
+               , refresh = 0
+               , cores = 4)
+model.2_a
 ```
+
+```{r eval = params$solution, echo = params$solution}
+cprior_b <- c(brms::prior(normal(3, 2), class = Intercept)
+            , brms::prior(normal(0, .5), class = b, coef = inc_hh)
+            , brms::prior(normal(0, 2), class = sigma))
+model.2_b <- brm(ls ~ 1 + inc_hh
+               , data = income
+               , prior = cprior_b
+               , silent = 2
+               , refresh = 0
+               , cores = 4)
+model.2_b
+```
+
+```{r eval = params$solution, echo = params$solution}
+cprior_c <- c(brms::prior(normal(3, 1), class = Intercept)
+            , brms::prior(normal(-1, 1), class = b, coef = inc_hh)
+            , brms::prior(normal(0, 1), class = sigma))
+model.2_c <- brm(ls ~ 1 + inc_hh
+               , data = income
+               , prior = cprior_c
+               , silent = 2
+               , refresh = 0
+               , cores = 4)
+model.2_c
+```
+
+
+```{r eval = !params$solution, echo = F}
+knitr::asis_output("-->")
+```
+
+
+
+d) Run a posterior prediction. Visualize the results.
+
+```{r eval = !params$solution, echo = F}
+knitr::asis_output("<!--")
+```
+
+#### Solution
 
 1d.
 
-```{r eval = params$solution, echo = params$solution}
-post.pred.1 <- posterior_predict(model.1)
-post.pred.0 <- posterior_predict(model.0)
-```
+```{r modelpostpred, eval = params$solution, echo = params$solution, cache = T, warning=T, message=T}
+post.pred.1 <- posterior_predict(model.2)
 
-```{r eval = params$solution, echo = params$solution}
 par(mar = c(4,4,.5,.5), cex = 1.3, mgp = c(2, .7, 0))
 post.pred.mean.1 <- colMeans(post.pred.1)
 plot(post.pred.mean.1
@@ -167,18 +235,6 @@ plot(post.pred.mean.1
      , ylim = c(.5, 5.5), xlim = c(.5, 5.5))
 abline(0, 1, lwd = 2)
 cor(post.pred.mean.1, income$ls)
-```
-
-```{r eval = params$solution, echo = params$solution}
-par(mar = c(4,4,.5,.5), cex = 1.3, mgp = c(2, .7, 0))
-post.pred.mean.0 <- colMeans(post.pred.0)
-plot(post.pred.mean.0
-     , income$ls
-     , ylab = "Data", xlab = "Predicted"
-     , pch = 1, col = "darkgray"
-     , ylim = c(.5, 5.5), xlim = c(.5, 5.5))
-abline(0, 1, lwd = 2)
-cor(post.pred.mean.0, income$ls)
 ```
 
 ```{r eval = !params$solution, echo = F}
