@@ -359,7 +359,13 @@ prior.predictions <- posterior_predict(model.prior)
 
 Visualization of predicted data (say the mean)
 
-```{r priorpredviz, cache =T, eval = TRUE, echo = FALSE, fig.asp = .7, dpi = 150, out.width=600, warning = F}
+```{r echo = T, eval = F}
+prior.pred.means <- colMeans(t(prior.predictions))
+prior.pred.sd <- apply(t(prior.predictions), 2, sd)
+```
+
+
+```{r priorpredviz, cache =F, eval = TRUE, echo = FALSE, fig.asp = .7, dpi = 150, out.width=500, warning = F}
 prior.pred.means <- colMeans(t(prior.predictions))
 prior.pred.sd <- apply(t(prior.predictions), 2, sd)
 prior.pred <- data.frame(
@@ -477,8 +483,9 @@ brms::rhat(model.fit)
 #### Effective samples
 
 - Effective samples measure the efficiency of the sampling algorithm.
-- Bulk ESS is for the bulk of the posterior distribution (relevant for mean and median estimates)
-- Tail ESS indicates the sampling efficiency at the tails of the distribution (relevant for credible intervals)
+- Bulk ESS is for the bulk of the posterior distribution (relevant for mean and median estimates).
+- Tail ESS indicates the sampling efficiency at the tails of the distribution (relevant for credible intervals).
+- Each should ideally be at least 400, 100 at a minimum.
 
 ```{r echo = T}
 neff_ratio(model.fit)
@@ -486,7 +493,7 @@ neff_ratio(model.fit)
 
 ---
 
-#### Trace plot
+#### Trace plot (fuzzy caterpillar)
 
 ```{r echo = T, fig.asp = .5, dpi = 150, out.width=500}
 mcmc_plot(model.fit, type = "trace") +
@@ -517,8 +524,8 @@ layout:false
 
 ### Model comparison
 
-- To assess how well a model reflects key patterns in the data, one typically compares it to one or more model with alternative specifications.
-- That's tomorrow's topic
+- To assess how well a model reflects key patterns in the data, one typically compares it to one or more models with alternative specifications.
+- That's tomorrow's topic.
 
 
 ---
@@ -550,7 +557,7 @@ include_graphics("src/stabilityanalysis.png")
 ---
 class:medium-font
 
-.footnote[Figure from Haaf & Rouder (2019) *Psychonomic Bulletin and Review*.]
+.footnote[Table from Haaf & Rouder (2019) *Psychonomic Bulletin and Review*.]
 
 
 ### Prior Sensitivity
@@ -588,7 +595,7 @@ layout: true
 - Given the data from the current study, the posterior predictive distribution tells us what data we should expect in the future.
 --
 
-- Formally (assuming past and future data areindependent): $p(y_{pred} | y) = \int_\theta p(y_{pred} | \theta) p(\theta | y) d \theta$
+- Formally (assuming past and future data are independent): $p(y_{pred} | y) = \int_\theta p(y_{pred} | \theta) p(\theta | y) d \theta$
 --
 
 - Practically, samples from the posterior predicitve distribution can be drawn using brms.
@@ -606,7 +613,7 @@ bayesplot::ppc_dens_overlay(df_spacebar$t, posterior.predictions[1:500,]) +
 
 ---
 
-```{r postpredviz, cache =T, eval = TRUE, echo = FALSE, fig.asp = .5, dpi = 150, out.width=750, warning = F}
+```{r postpredviz, cache =F, eval = TRUE, echo = FALSE, fig.asp = .5, dpi = 150, out.width=750, warning = F}
 prior.pred.means <- colMeans(t(prior.predictions))
 prior.pred.sd <- apply(t(prior.predictions), 2, sd)
 
@@ -614,12 +621,12 @@ post.pred.means <- colMeans(t(posterior.predictions))
 post.pred.sd <- apply(t(posterior.predictions), 2, sd)
 
 pred <- data.frame(
-  Parameter = rep(c("Prior_mean", "Prior_sigma", "Posterior_mean", "Posterior_sigma"), each = 8000)
+  Summary = rep(c("Prior_mean", "Prior_sd", "Posterior_mean", "Posterior_sd"), each = 8000)
   , Prediction = c(prior.pred.means, prior.pred.sd, post.pred.means, post.pred.sd))
 
-ggplot(pred, aes(x = Prediction, fill = Parameter)) +
+ggplot(pred, aes(x = Prediction, fill = Summary)) +
   geom_histogram (binwidth = 0.03, alpha = 0.5, position = "identity") +
-  facet_wrap(~ Parameter, ncol = 2, nrow = 2) +
+  facet_wrap(~ Summary, ncol = 2, nrow = 2) +
   xlim(c(-.05, .75)) + 
   theme_light(base_size = 16)
 ```
