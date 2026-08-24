@@ -30,6 +30,7 @@ knitr::opts_chunk$set(echo = T, warning = F, error = F, message = F)
 ```{r packages}
 library(tidyverse)   # Graphs with ggplot()
 library(GGally)      # Extensions to ggplot
+library(ggalt)       # Extensions to ggplot
 library(knitr)       # Tables with kable()
 library(reshape2)    # data reshaping between wide & long
 library(ggokabeito)  # colorblind friendly colors
@@ -47,9 +48,11 @@ set.seed(1234) # For reproducibility
 ```
 
 ### Research question
+
 Can a penguins’ flipper length be predicted from their bill length? To what extent does this vary between species, and/or between islands?
 
 ### Overview of the pattern in the data
+
 ```{r g1, fig.width = 3.5, fig.height = 2.5, fig.align='center', fig.cap = "Flipper length as a function of bill length for penguins living in the Palmer archipel."}
 
 g1 <- ggplot(penguins, aes(x = bill_len, y = flipper_len))+
@@ -62,7 +65,6 @@ g1 <- ggplot(penguins, aes(x = bill_len, y = flipper_len))+
 g1
 ```
 
-
 ### Initial priors
 
 ```{r defaults}
@@ -73,13 +75,13 @@ default_prior(flipper_len ~ bill_len + (1 | species)
 )
 ```
 
-The model has default priors for the following coefficients: 
+The model has default priors for the following coefficients:
 
-  * `bill_len` (class b, for the fixed effect of bill length): an improper flat prior over the reals.
-  * `Intercept` (class Intercept, for the fixed effect of the intercept after centering all other predictors around zero): a stutent_t prior that is weakly informative (a property it obtains by "looking" at the data).
-  * `Intercept species` (class sd, for the random intercept of species): a student_t prior that is weakly informative and has a lower bound at zero, since standard deviations cannot be negative.
-  * `sigma` (class sigma, for the residual standard deviation after taking all other parameters into account): a student_t prior that is weakly informative and has a lower bound at zero.
-  
+- `bill_len` (class b, for the fixed effect of bill length): an improper flat prior over the reals.
+- `Intercept` (class Intercept, for the fixed effect of the intercept after centering all other predictors around zero): a stutent_t prior that is weakly informative (a property it obtains by "looking" at the data).
+- `Intercept species` (class sd, for the random intercept of species): a student_t prior that is weakly informative and has a lower bound at zero, since standard deviations cannot be negative.
+- `sigma` (class sigma, for the residual standard deviation after taking all other parameters into account): a student_t prior that is weakly informative and has a lower bound at zero.
+
 ### Own priors - version 1
 
 Lets try to improve on the defaults by replacing the flat prior on b with a more informative one
@@ -89,6 +91,7 @@ prior_1 <- c(prior(normal(0, 5), class = b, coef = bill_len))
 ```
 
 Try it out
+
 ```{r priorcheck1, results = "hide"}
 output <- capture.output(
   m_prior_1 <- brm(flipper_len ~ bill_len + (1 | species)
@@ -97,7 +100,7 @@ output <- capture.output(
 	, prior = prior_1
 	, sample_prior = "only" # "TRUE"
 	, warmup = 1000
-	, iter = 4000
+	, iter = 2000
 	, chains = 4
 	, cores = 4
 	, save_pars = save_pars(all = TRUE)) # required to compute BFs
@@ -113,7 +116,7 @@ set.seed(1234)
 pp_check(m_prior_1)
 ```
 
-The priors lead to reasonable predictions overall, though also seem to vary a lot. Consider replacing the t-distributions with normal distributions, whose narrower tails may reduce the overall variation somewhat. 
+The priors lead to reasonable predictions overall, though also seem to vary a lot. Consider replacing the t-distributions with normal distributions, whose narrower tails may reduce the overall variation somewhat.
 
 ### Own priors - version 2
 
@@ -123,6 +126,7 @@ prior_2 <- c(prior(normal(0, 5), class = b, coef = bill_len),
 ```
 
 Try it out
+
 ```{r priorcheck2, results = "hide"}
 output <- capture.output(
 m_prior_2 <- brm(flipper_len ~ bill_len + (1 | species)
@@ -188,7 +192,6 @@ m3_stan <- make_stancode(data = penguins
 m3_stan
 ```
 
-
 #### Convergence
 
 ```{r convergence, include=FALSE}
@@ -209,22 +212,22 @@ ess <- sum1_d[,c("Bulk_ESS", "Tail_ESS")] |> pivot_longer(cols = everything())
 
 ```
 
-The model fit procedure seems to have converged to a stable solution: $\hat{R}$ values are at `r round(min(rhat), 2)`, the number of effective sample sizes all lie above `r round(min(ess$value), 0)`, the posterior distributions are unimodal and relatively smooth, and the trace plots suggest that the chains mixed well (they lie on top of one another) showing a horizontal zig-zag like a "hairy caterpillar" with no systematic upwards or downwards drift. 
+The model fit procedure seems to have converged to a stable solution: $\hat{R}$ values are at `r round(min(rhat), 2)`, the number of effective sample sizes all lie above `r round(min(ess$value), 0)`, the posterior distributions are unimodal and relatively smooth, and the trace plots suggest that the chains mixed well (they lie on top of one another) showing a horizontal zig-zag like a "hairy caterpillar" with no systematic upwards or downwards drift.
 
 #### Parameter estimates
 
-The model parameters have average values that roughly seem to make sense. For example, at `r round(sum1_d[1, 2], 2)` mm the mean of the intercept can reasonably be conceived as corrresponding to the flipper length of a very small penguin (of beak length zero). An increase in bill length by one mm is estimated to go along with a corresponding increase in flipper length by `r round(sum1_d[2, 2], 2)` mm on average, though the random intercept of `r round(sum1_d[3, 2], 2)` indicates that the relationship between bill and flipper length varies between species.  
+The model parameters have average values that roughly seem to make sense. For example, at `r round(sum1_d[1, 2], 2)` mm the mean of the intercept can reasonably be conceived as corrresponding to the flipper length of a very small penguin (of beak length zero). An increase in bill length by one mm is estimated to go along with a corresponding increase in flipper length by `r round(sum1_d[2, 2], 2)` mm on average, though the random intercept of `r round(sum1_d[3, 2], 2)` indicates that the relationship between bill and flipper length varies between species.
 
-All parameters appear large enough to contribute to the model's ability to predict the observed values of the criterion variable (i.e. flipper length). For example, the 95\% credible interval for the fixed effect of bill length [`r round(sum1_d[2, 4], 2)`, `r round(sum1_d[2, 5], 2)`] is positive and does not include zero. 
+All parameters appear large enough to contribute to the model's ability to predict the observed values of the criterion variable (i.e. flipper length). For example, the 95% credible interval for the fixed effect of bill length [`r round(sum1_d[2, 4], 2)`, `r round(sum1_d[2, 5], 2)`] is positive and does not include zero.
 
 ### Model comparison
 
-Until now we have only considered a relatively simple model with a fixed predictor for bill length, and a random intercept for species. We can consider complexer models with more predictors, as well as a minimal intercept-only model, and compare these to one another using Bayes factors to gain a better overview of which model specification offers the best balance between the ability to account for the pattern in the data and doing so without being unnecessarily complex resp. flexible. For instance, we can consider the following four models and compare them with the model we just computed. 
+Until now we have only considered a relatively simple model with a fixed predictor for bill length, and a random intercept for species. We can consider complexer models with more predictors, as well as a minimal intercept-only model, and compare these to one another using Bayes factors to gain a better overview of which model specification offers the best balance between the ability to account for the pattern in the data and doing so without being unnecessarily complex resp. flexible. For instance, we can consider the following four models and compare them with the model we just computed.
 
-*   A random interecept model: `m_rintercept <- brm(flipper_len ~ 1 + (1 | species))`
-*   A model with a fixed predictor for bill depth instead of bill length: `m2 <- brm(flipper_len ~ bill_dep + (1 | species))`
-*   A model with both fixd predictors (without interaction): `m3 <- brm(flipper_len ~ bill_len + bill_dep + (1 | species))`
-*   A model with both fixed predictors and their interaction: `m4 <- brm(flipper_len ~ bill_len*bill_dep + (1 | species))`
+- A random interecept model: `m_rintercept <- brm(flipper_len ~ 1 + (1 | species))`
+- A model with a fixed predictor for bill depth instead of bill length: `m2 <- brm(flipper_len ~ bill_dep + (1 | species))`
+- A model with both fixd predictors (without interaction): `m3 <- brm(flipper_len ~ bill_len + bill_dep + (1 | species))`
+- A model with both fixed predictors and their interaction: `m4 <- brm(flipper_len ~ bill_len*bill_dep + (1 | species))`
 
 To compute models that contain interacting predictor variables, we center the variables around their mean first in order to avoid problems of multicollinearity.
 
@@ -232,7 +235,6 @@ To compute models that contain interacting predictor variables, we center the va
 penguins$bill_len_c <- penguins$bill_len - mean(penguins$bill_len, na.rm = T)
 penguins$bill_dep_c <- penguins$bill_dep - mean(penguins$bill_dep, na.rm = T)
 ```
-
 
 ```{r alt models}
 output <- capture.output(
@@ -307,8 +309,7 @@ m4 <- brm(flipper_len ~ bill_len_c*bill_dep_c + (1 | species)
 
 ```
 
-
-Now we can compare the models using Bayes factors, in this case with the bridge sampling method. 
+Now we can compare the models using Bayes factors, in this case with the bridge sampling method.
 
 ```{r bfs}
 # Marginal likelihoods as starting point
@@ -330,8 +331,7 @@ bf_34 <- bayes_factor(mar_m3, mar_m4) # 3.61
 1/bf_43$bf
 ```
 
-The $BF$ comparison yielded that model `m3`, with main effects for bill length and bill depth, but without their interaction, achieved the best balance between accounting for the pattern in the data without being unnecessarily complex. 
-
+The $BF$ comparison yielded that model `m3`, with main effects for bill length and bill depth, but without their interaction, achieved the best balance between accounting for the pattern in the data without being unnecessarily complex.
 
 ### Posterior predictive check
 
@@ -343,11 +343,11 @@ pp_check(m3)
 # pp_check(m_prior_2, type='stat', stat='mean')
 ```
 
-There is a good overall correspondence between model predictions and the pattern in the data. 
+There is a good overall correspondence between model predictions and the pattern in the data.
 
 ### Summary output for final model
 
-Now that we have settled on `m3` as the relative best model among those we compared, we can visualise in a bit further detail its posterior parameter estimates, e.g. through plots of posterior distributions and tables with the most important numerical values. There are many options in R to do so - here we use the `bayesplot` package for graphics and the `knitr` package for tables. 
+Now that we have settled on `m3` as the relative best model among those we compared, we can visualise in a bit further detail its posterior parameter estimates, e.g. through plots of posterior distributions and tables with the most important numerical values. There are many options in R to do so - here we use the `bayesplot` package for graphics and the `knitr` package for tables.
 
 #### General effects
 
@@ -368,15 +368,16 @@ g2
 ```
 
 ```{r table1}
-m3_fixed <- summary(m3)[[15]][,c("Estimate", "Est.Error", 
-                                 "l-95% CI", "u-95% CI", "Bulk_ESS", "Rhat")] 
+# See also https://deepwiki.com/paul-buerkner/brms/4.1-extraction-methods
+m3_fixed <- data.frame(fixef(m3))
 m3_fixed <- rownames_to_column(m3_fixed, var = "Parameter")
 colnames(m3_fixed) <- c("Parameter", "Mean", "SE", 
-                        "Lower Bound", "Upper Bound", "$n_{eff}$","$\\hat{R}$")
+                        "Lower Bound", "Upper Bound") #, "$\\hat{R}$", "Bulk ESS", "Tail ESS"
 kable(m3_fixed, caption = "Fixed effects for model m3.")
 ```
 
 #### Individual effects
+
 (in this case just random intercept by species)
 
 ```{r posteriors by species, fig.width = 3.5, fig.height = 3, fig.align = "center", fig.cap = "Random intercepts by species for model m3."}
@@ -420,42 +421,48 @@ g_intercept_byspecies2
 ```
 
 ```{r table2}
-m3_rintercept <- summary(m3)[[18]][[1]][,c("Estimate", "Est.Error", 
-                                           "l-95% CI", "u-95% CI", 
-                                           "Bulk_ESS", "Rhat")] 
-m3_residual <- summary(m3)[[16]][,c("Estimate", "Est.Error", 
-                                    "l-95% CI", "u-95% CI", 
-                                    "Bulk_ESS", "Rhat")] 
+# See also https://deepwiki.com/paul-buerkner/brms/4.1-extraction-methods
+# See also ranef()
+
+
+m3_rintercept <- data.frame(VarCorr(m3)$species$sd)
 m3_rintercept <- rownames_to_column(m3_rintercept, var = "Parameter")
-m3_residual <- rownames_to_column(m3_residual, var = "Parameter")
+
+m3_residual <- data.frame(VarCorr(m3)$residual__$sd)
+m3_residual <- cbind("Parameter" = "Residual", m3_residual )
+
 m3_rand <- rbind(m3_rintercept, m3_residual)
 colnames(m3_rand) <- c("Parameter", "Mean", "SE", 
-                       "Lower Bound", "Upper Bound", 
-                       "$n_{eff}$","$\\hat{R}$")
+                       "Lower Bound", "Upper Bound")
 kable(m3_rand, caption = "Random effects for model m3.")
 ```
 
-
 ### Extension
 
-Ben Bolker shared a larger penguin dataset that is great for multilevel modelling because it features many more species, along with further penguin measurements. The inclusion of more species makes it easier to compute not just the overall variability of the criterion variable between spieces (random intercept), but also to what extent the relationship between predictors and criterion varies between species (random slopes). The github repository for the course contains further details. Dataset source: Tobias, Joseph A., Catherine Sheard, Alex L. Pigot, et al. 2022. “AVONET: Morphological, Ecological and Geographical Data for All Birds.” Ecology Letters 25 (3): 581–97. https://doi.org/10.1111/ele.13898.
+Ben Bolker shared a larger penguin dataset that is great for multilevel modelling because it features many more species, along with further penguin measurements. The inclusion of more data points at the group level makes it easier to compute random effects for it. Dataset source: Tobias, Joseph A., Catherine Sheard, Alex L. Pigot, et al. 2022. “AVONET: Morphological, Ecological and Geographical Data for All Birds.” Ecology Letters 25 (3): 581–97. <https://doi.org/10.1111/ele.13898>.
 
 ```{r lotsofpenguins}
-pp <- readRDS("penguin_traits.rds")
+pp <- read.csv("pp.csv")
 head(data.frame(pp))
 ```
 
-\begin{figure}
-\centering
-\includegraphics[width=.8\textwidth]{penguin_traits}
-\end{figure}
 
-For this dataset, a model predicting beak depth from beak width - while accounting for differences between species - could look like `m5` below. Since we now have more species. Using Bayes factors, we can compare this to a complexer model `m6` that includes a random slope for beak width alongside the random intercept. 
+```{r lotsofpenguinsgraph, fig.width = 4, fig.height = 3, fig.align = "center", fig.cap = "Relations between the width and depth of the beaks of lots of penguins."}
+## with ggplot so we can do ellipses
+gg0 <- ggplot(pp, aes(Beak.Width, Beak.Depth, color = Species, shape = genus)) +
+  geom_point() + 
+  theme_bw() + 
+  geom_encircle(aes(fill=Species), alpha = 0.1, expand=0.01) +
+  labs(x = "Beak width", y = "Beak depth", shape = "Genus") + 
+  guides(color = "none", fill = "none")
+gg0
+```
 
+For this dataset, a model predicting beak depth from beak width - while accounting for differences between species - could look like `m5` below. Since we now have more species, we can also compare the model with a random intercept to a complexer model that also includes a random slope for species. This corresponds to the hypothesis that beak depth not only varies between species (intercept), but that the extent to which it can be predicted from beak width (slope) also varies between species.
 
 ```{r newmodels}
 output <- capture.output(
-m5 <- brm(Beak.Depth ~ Beak.Width + (1 | Species)
+m5 <- brm(Beak.Depth ~ Beak.Width
 	, data = pp
 	, family = gaussian()
 	, sample_prior = TRUE
@@ -468,7 +475,7 @@ m5 <- brm(Beak.Depth ~ Beak.Width + (1 | Species)
 )
 
 output <- capture.output(
-m6 <- brm(Beak.Depth ~ Beak.Width + (Beak.Width | Species)
+m6 <- brm(Beak.Depth ~ Beak.Width + (1 | Species)
 	, data = pp
 	, family = gaussian()
 	, sample_prior = TRUE
@@ -480,12 +487,21 @@ m6 <- brm(Beak.Depth ~ Beak.Width + (Beak.Width | Species)
 	, control = list(adapt_delta = 0.99, max_treedepth = 12)) 
 )
 
-mar_m5 <- bridge_sampler(m5, silent = T)
-mar_m6 <- bridge_sampler(m6, silent = T)
-bf_65 <- bayes_factor(mar_m6, mar_m5) # 0.11479
-1/bf_65$bf
+output <- capture.output(
+m7 <- brm(Beak.Depth ~ Beak.Width + (Beak.Width | Species)
+	, data = pp
+	, family = gaussian()
+	, sample_prior = TRUE
+	, warmup = 1000
+	, iter = 14000
+	, chains = 4
+	, cores = 4
+	, save_pars = save_pars(all = TRUE)
+	, control = list(adapt_delta = 0.99, max_treedepth = 12)) 
+)
+
+bf_65 <- bayes_factor(m6, m5, silent = T) # BF_65 > 1000
+bf_76 <- bayes_factor(m7, m6, silent = T) # BF_76 ~ 5
 ```
 
-In this case model `m5` without the assumption that the relationship between beak width and beak depth varies between species was around `r round(1/bf_65$bf, 1)` times more likely than `m6` given the data. The variability in the beak width - beak depth relation between species may be too small to warrant the increased model complexity that would result from taking it into account.  
-
-
+The comparison indicated there was strong evidence for inter-species differences in average beak depth, $BF\_{65} >$ `r round(bf_65$bf, 3)`. In contrast, there was slight evidence against inter-species differences in the relationship between beak depth and beak width, $BF_{67} \sim$ `r round(1/bf_76$bf, 3)`.
