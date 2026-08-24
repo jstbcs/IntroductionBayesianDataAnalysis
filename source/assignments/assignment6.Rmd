@@ -1,52 +1,92 @@
 ---
 title: "Assignment 6"
-author: "Nicole Cruz, Julia Haaf, Shravan Vasishth"
-date: ""
-output: pdf_document
+author: "Nicole Cruz"
+date: "`r Sys.Date()`"
+output: 
+  pdf_document:
+    highlight: pygments
+    toc: true
+    toc_depth: 4
+header-includes:
+   - \usepackage{graphicx} 
+   - \usepackage[font=small,labelfont=bf]{caption}
+   - \usepackage{float} 
+   - \usepackage{xcolor}
+   - \definecolor{steelblue}{RGB}{70,130,180}
+   - \usepackage{amssymb}
+   - \definecolor{gruen}{RGB}{0, 153, 76}
+   - \definecolor{rot}{RGB}{204, 0, 0}
+toc-title: Inhalte 
+urlcolor: teal
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-library(brms)
-library(tidyverse)
-library(ggplot2)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, error = FALSE)
 ```
 
-## Are subject relatives easier to process than object relatives (log-normal likelihood)? 
+\begin{figure}
+\centering
+    \href{https://files.worldhappiness.report/WHR24.pdf}
+           {\includegraphics[width=0.65\textwidth]{happiness}}
+           \captionof{figure}{Happiness in different parts of the world over time.}
+\end{figure}
 
-This is a classic question from the psycholinguistics literature: Are subject relatives easier to process than object relatives? The data come from Experiment 1 in a paper by Grodner and Gibson 2005.^[Grodner, D., & Gibson, E. (2005). Consequences of the serial nature of linguistic input for sentenial complexity. Cognitive Science, 29(2), 261-290.]
+## \color{teal}{Introduction}
 
- *Scientific question*: Is there a subject relative advantage in reading?
 
-Grodner and Gibson 2005 investigate an old claim in psycholinguistics that object relative clause (ORC) sentences are more difficult to process than \index{Subject relative clause} subject relative clause (SRC) sentences. One explanation for this predicted difference is that the distance between the relative clause verb (*sent* in the example below) and the head noun phrase of the relative clause (*reporter* in the example below) is longer in ORC vs. SRC. Examples are shown below. The relative clause is shown in square brackets.
+### Dataset: 
 
- (1a) The *reporter* [who the photographer *sent* to the editor] was hoping for a good story. (ORC)
+A subset of the dataset form the [2024 World Happiness Report](https://worldhappiness.report/), which includes the countries for which 15 datapoints or more were available. The report presents the results of a yearly survey of people's happiness in different parts of the world. The initiative is a collaboration of Gallup, the Oxford Wellbeing Research Centre, the UN Sustainable Development Solutions Network, and the WHR's Editorial Board. 
 
- (1b) The *reporter* [who *sent* the photographer to the editor] was hoping for a good story. (SRC)
+The central results are in the first chapters of the report, summarised in its [Figure 2.1](https://public.tableau.com/views/2024Draft/Figure2_1?:language=en-US&:embed=y&:sid=&:embed_code_version=3&:loadOrderID=0&:display_count=y&:origin=viz_share_link).
 
- The underlying explanation has to do with memory processes: Shorter linguistic dependencies are easier to process due to either reduced interference or decay, or both. 
+In general, the initiative seeks to highlight happiness as a central indicator of societal progress; that it can be measured; and that its measurement can form an empirical basis for interventions to promote happiness. 
 
- In the Grodner and Gibson data, the dependent measure is reading time at the relative clause verb, (e.g., *sent*) of different sentences with either ORC or SRC. The dependent variable is in milliseconds and was measured in a self-paced reading task. Self-paced reading is a task where subjects read a sentence or a short text word-by-word or phrase-by-phrase, pressing a button to get each word or phrase displayed; the preceding word disappears every time the button is pressed.
+In each survey round, around 1000 people from each country are asked several questions related to happiness. In one question they are asked to imagine a ladder with steps from 0 to 10, and to rate their overall life happiness on it, with higher steps representing higher happiness ("Cantril ladder", corresponding to the variable `Life.Ladder` in the dataset). Further questions refer to positive and negative emotions experienced the past day; and to possible causes of happiness like GDP, social support, freedom to make life choices, and perceived corruption. Below you see the first rows of the dataset. 
 
- For this experiment, we are expecting longer reading times at the relative clause verbs of ORC sentences in comparison to the relative clause verb of SRC sentences.
-
-```{r open_grodneretal, message = FALSE}
-load("data/df_gg05_rc.rda")
-head(df_gg05_rc)
+```{r data}
+d <- read.csv("countries_n15over.csv")
+head(d, 4)
 ```
 
-You should use a sum coding for the predictors. Here, object relative clauses (`"objgaps"`) are coded $+1/2$, subject relative clauses $-1/2$.
 
-```{r}
-df_gg05_rc <- df_gg05_rc %>%
-  mutate(c_cond = if_else(condition == "objgap", 1/2, -1/2))
+### Packages
+
+```{r packages}
+library(kableExtra)  # tables
+library(ggplot2)     # graphics
+library(ggokabeito)  # colorblind friendly color palettes
+library(brms)        # Bayesian modelling
+library(performance) # icc
 ```
 
-You should be able to now fit a "maximal" model (correlated varying intercept and slopes for subjects and for items) assuming a log-normal likelihood.
+## \color{teal}{Part 1: Data wrangling}
 
-(a) Specify the statistical model and define priors for all parameters in the model. *Hint:* To assess reasonable ranges of values for the mean and sigma parameter of a lognormal distribution, you might want to simulate lognormal data for different values using `rlnorm()`
-(b) Examine the effect of relative clause attachment site (the predictor `c_cond`) on reading times `RT` ($\beta_1$).
-(c) Estimate the median difference between relative clause attachment sites in milliseconds, and report the mean and 95% CI.
-(d) Inspect individual differences in the subject relative advantage effect. Are there participants with effects in opposite directions?
-(e) Do a sensitivity analysis. What is the estimate of the effect ($\beta_1$) under different priors? What is the difference in milliseconds between conditions under different priors?
+
+### Exercise 1. 
+Choose 5 countries from a given continent, and create a new, smaller dataset with only the data from those countries (you can use the `subset()` function for this). 
+
+
+### Exercise 2. 
+Formulate a hypothesis to test with your dataset. The hypothesis should be testable using `Life.Ladder` as criterion and one or more of the other variables as predictors. 
+
+
+### Exercise 3.
+Illustrate the pattern in the data that is relevant to the hypothesis with a graph. Design the graph in such a way, that (a) two (or more) levels of aggregation are visible, and (b) not only information about means, but also information about the variance around those means is visible, (c) the figure axes have comprehensible labels. 
+
+
+## \color{teal}{Part 2: Data analysis}
+
+### Exercise 4. 
+
+Specify and test a multilevel model to test your hypothesis. Let your model contain at least two levels of aggregation, and include parameters to assess not only means ("fixed effects") but also variability around those means ("random effects"). Test it both by computing posterior parameter values, and by comparing alternative models (with vs. without a parameter of interest) using Bayes factors. 
+
+
+## \color{teal}{Part 3: Interpretation}
+
+### Exercise 5. 
+
+Interpret the results against the background of the hypothesis. 
+
+
 
