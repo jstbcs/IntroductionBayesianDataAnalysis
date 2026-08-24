@@ -1,5 +1,5 @@
 ---
-title: "Assignment 2"
+title: "Assignment 3"
 author: "Julia Haaf & Nicole Cruz"
 date: ""
 output: pdf_document
