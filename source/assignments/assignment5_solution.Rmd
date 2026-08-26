@@ -18,7 +18,7 @@ library(tidyverse)
 library(brms)
 ```
 ```{r}
-load("df_pupil_complete.rda")
+load("data/df_pupil_complete.rda")
 df_pupil_complete <- df_pupil_complete %>%
   mutate(c_load = load - mean(load))
 ```
