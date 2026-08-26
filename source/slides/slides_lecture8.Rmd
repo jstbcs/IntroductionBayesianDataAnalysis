@@ -1,0 +1,775 @@
+---
+title     : "<small>Introduction to Bayesian Data Analysis</small>"
+subtitle  : "Lecture 8: Further topics"
+author    : "<br />Julia Haaf"
+date      : "<small>Summer 2026</small>"
+
+output:
+  xaringan::moon_reader:
+    lib_dir: libs
+    self_contained: true
+    chakra: libs/remark-latest.min.js
+    css: ["xaringan-themer.css", "slides.css", "hygge"]
+    nature:
+      countIncrementalSlides: false
+header-includes:
+  - \usepackage{xcolor}
+  - \usepackage{amsmath} % not really used here
+  - \DeclareMathSymbol{\qm}{\mathalpha}{operators}{"3F}
+  - \DeclareMathAlphabet{\mathbbold}{U}{bbold}{m}{n}
+
+---
+
+exclude: true
+
+```{r setup, included = FALSE}
+library("knitr")
+library(kableExtra)
+library(tidyverse)
+library(psych)
+options(htmltools.dir.version = FALSE)
+opts_chunk$set(echo = FALSE, fig.align = "center")
+
+# remotes::install_github("gadenbuie/xaringanExtra")
+library("xaringanExtra")
+library("xaringanthemer")
+
+my_colors <- c("#495e8c", "#ef9ada")
+
+library("ggplot2")
+library(diagram)
+```
+
+```{r extras-styling, include = FALSE}
+use_xaringan_extra(c("tile_view", "clipboard")) #, "broadcast", "webcam", "animate_css"
+
+# style_mono_light("#32475b")
+style_mono_accent(
+  base_color = my_colors[1]
+  # , title_slide_background_image = "src/uva.svg"
+  , header_font_google = google_font("Poppins")
+  , header_h1_font_size = "36pt"
+  , text_font_google = google_font("Open Sans")
+  , text_font_size = "20pt"
+  , text_color = "#3a3a3a"
+  , outfile = "xaringan-themer.css"
+)
+```
+
+```{r}
+add_overlay <- function(..., label = NULL, label_style = NULL) {
+  el <- list(...)
+  
+  y <- '<div id="overlay-highlight"'
+  if(length(el) > 0) {
+    y <- c(y, 'style="', glue::glue('{names(el)}:{el};'))
+  }
+  y <- c(y, '">')
+  
+  if(!is.null(label)) {
+    y <- c(y, glue::glue('<span" class="vertical-center"" style="{label_style}">{label}</span>'))
+  }
+  
+  knitr::asis_output(glue::glue_collapse(c(y, "</div>")))
+}
+```
+
+<script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.js"></script>
+<script type="module">
+import mediumZoom from 'https://cdn.jsdelivr.net/npm/medium-zoom@1.0.6/dist/medium-zoom.esm.js'
+
+const zoomDefault = mediumZoom('#zoom-default')
+const zoomMargin = mediumZoom('#zoom-margin', { margin: 45 })
+</script>
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  "HTML-CSS": {
+    scale: 150
+  }
+});
+</script>
+
+---
+
+### Further topics?
+
+```{r out.width = "40%"}
+include_graphics("src/sceptic.png")
+```
+
+
+---
+
+### Overview
+
+- Formal Cognitive Models
+- Signal Detection Theory
+- Drift-Diffusion Model
+- Other Further Topics
+
+---
+layout:true
+
+### Formal Cognitive Models
+
+---
+
+There are many things that people call models.
+
+--
+
+E.g. Prayoga, T., & Abraham, J. (2017). A psychological model explaining why we love or hate statistics.
+
+```{r out.width = "90%"}
+include_graphics("src/verbalmodel.jpg")
+```
+
+--
+
+**This is a verbal model.**
+
+---
+
+There are many things that people call models.
+
+--
+
+E.g. Rouder, Schnuerch, Haaf & Morey (2023). Principles of Model Specification in ANOVA Designs.
+
+```{r out.width = "60%"}
+include_graphics("src/anova.png")
+```
+
+--
+
+**These are statistical models.**
+
+---
+
+>"A mathematical model or theory is a set of mathematical structures, including a set of *linkage statements*" (vanZandt & Townsend, 2012)
+
+--
+
+- Behavioral variables are related to components of cognitive processes using equations.
+--
+
+- Model parameters and function are interpretable as cognitive processes.
+--
+
+- As with statistical models, behavior needs to be quantifiable (e.g. accuracy, response time).
+
+---
+layout:false
+class: middle, inverse, center
+
+# Signal Detection Theory
+
+---
+class: my-one-page-font
+
+### Signal detection experiment
+
+```{r, out.width = "60%", out.extra = 'id="zoom-margin"'}
+include_graphics("src/sdexp.png")
+```
+
+--
+
+| Stimulus | Present response | Absent Response | Total | 
+|:------|:-----:|:---------:|:------:| 
+|   Signal  |  75  |    25   |    100  | 
+|  Noise  |  30 |   20   |   50  | 
+|  Total  |  105 |   45   |     | 
+
+---
+
+class: my-one-page-font
+
+### Signal detection experiment
+
+```{r, out.width = "60%", out.extra = 'id="zoom-margin"'}
+include_graphics("src/sdexp.png")
+```
+
+| Stimulus | Present response | Absent Response | Total | 
+|:------|:-----:|:---------:|:------:| 
+|   Signal  |  75 (Hits)  |    25 (Misses)   |    100  | 
+|  Noise  |  30 (False Alarms) |   20 (Correct Rejections)   |   50  | 
+|  Total  |  105 |   45   |     | 
+
+---
+
+### Signal Detection Theory vs. Signal detection experiment
+
+- Signal Detection Theory (SDT): Model-based method of assessing performance
+--
+
+- Originally developed for signal detection experiments
+- Now used for perception, memory, decision theory, attitude research, ...
+
+.footnote[Green & Swets, 1966]
+--
+
+- Originally for two-choice tasks
+- Now extended to any form of forced-choice task including rating scales, continuous measures, ...
+
+
+```{r}
+make.line <- function(x, mu = 0, s2 = 1, ...){
+  y <- dnorm(x, mu, sqrt(s2))
+  lines(x = rep(x, 2), y = c(0, y) , ...)
+}
+
+make.poly <- function(a, b, mu = 0, s2 = 1, seq.by = .01, ...){
+  y <- dnorm(seq(a, b, seq.by), mu, sqrt(s2))
+  xx <- c(seq(a, b, seq.by), seq(b, a, -seq.by))
+  yy <- c(y, rep(0, length(y)))
+  polygon(xx, yy, border = NA, ...)
+}
+```
+
+
+---
+class: my-one-page-font
+
+### Signal Detection Theory model
+
+- General idea: Perception strength $S$ varies gradually.
+- On average, perceptual strength is higher when the stimulus is present compared to absent.
+
+--
+
+$$
+S \sim
+\begin{cases}
+\mbox{Normal}(\mu = d', \sigma^2 = 1), \qquad \text{for signal-present trials,}\\
+\mbox{Normal}(\mu = 0, \sigma^2 = 1), \qquad \text{for signal-absent trials.}
+\end{cases}
+$$
+
+---
+
+### SDT model
+
+```{r echo = F, fig.asp = .6, fig.width=10}
+par(mar = c(3,3,3,1), mgp = c(2,.7,0), cex = 1.5)
+x <- seq(-3, 5, .01)
+y.noise <- dnorm(x)
+y.signal <- dnorm(x, 1.5)
+
+plot(x, y.noise
+     , type = "l", lwd = 4
+     , xlim = range(x)
+     , frame.plot = F
+     , ylab = "Density"
+     , xlab = "Sensory Strength"
+     , cex.lab = 1.3
+     )
+lines(x, y.signal, col = "firebrick4", lwd = 4)
+# make.line(0)
+# make.line(1.5, 1.5)
+# abline(v = 1, lwd = 2, col = "darkgreen")
+# axis(3, at = c(0, 1.5), labels = c("", ""))
+# mtext("d'", 3, line = .5, at = .75, cex = 1.3)
+# text(1.2, .03, "c", cex = 1.3)
+text(-2, .35, "Stimulus absent", cex = 1.3)
+text(3.5, .35, "Stimulus present", cex = 1.3)
+```
+
+---
+
+### SDT model
+
+```{r echo = F, fig.asp = .6, fig.width=10}
+par(mar = c(3,3,3,1), mgp = c(2,.7,0), cex = 1.5)
+x <- seq(-3, 5, .01)
+y.noise <- dnorm(x)
+y.signal <- dnorm(x, 1.5)
+
+plot(x, y.noise
+     , type = "l", lwd = 4
+     , xlim = range(x)
+     , frame.plot = F
+     , ylab = "Density"
+     , xlab = "Sensory Strength"
+     , cex.lab = 1.3
+     )
+lines(x, y.signal, col = "firebrick4", lwd = 4)
+# make.line(0)
+# make.line(1.5, 1.5)
+# abline(v = 1, lwd = 2, col = "darkgreen")
+axis(3, at = c(0, 1.5), labels = c("", ""), lwd = 3)
+mtext("d'", 3, line = .5, at = .75, cex = 2)
+# text(1.2, .03, "c", cex = 1.3)
+text(-2, .35, "Stimulus absent", cex = 1.3)
+text(3.5, .35, "Stimulus present", cex = 1.3)
+```
+
+$d' =$ Sensitivity.
+
+---
+
+### SDT model
+
+```{r echo = F, fig.asp = .6, fig.width=10}
+par(mar = c(3,3,3,1), mgp = c(2,.7,0), cex = 1.5)
+x <- seq(-3, 5, .01)
+y.noise <- dnorm(x)
+y.signal <- dnorm(x, 1.5)
+
+plot(x, y.noise
+     , type = "l", lwd = 4
+     , xlim = range(x)
+     , frame.plot = F
+     , ylab = "Density"
+     , xlab = "Sensory Strength"
+     , cex.lab = 1.3
+     )
+lines(x, y.signal, col = "firebrick4", lwd = 4)
+abline(v = 1, lwd = 2, col = "darkgreen")
+axis(3, at = c(0, 1.5), labels = c("", ""), lwd = 3)
+mtext("d'", 3, line = .5, at = .75, cex = 2)
+text(1.2, .03, "c", cex = 1.3)
+text(-2, .35, "Stimulus absent", cex = 1.3)
+text(3.5, .35, "Stimulus present", cex = 1.3)
+```
+
+$c =$ Criterion, determines the response made.
+
+---
+
+### SDT model predictions for H, M, F, C
+
+What corresponds to the probability of hit?
+
+```{r echo = F, fig.asp = .6, fig.width=9}
+par(mar = c(3,3,3,1), mgp = c(2,.7,0), cex = 1.5)
+x <- seq(-3, 5, .01)
+y.noise <- dnorm(x)
+y.signal <- dnorm(x, 1.5)
+
+plot(x, y.noise
+     , type = "l", lwd = 4
+     , xlim = range(x)
+     , frame.plot = F
+     , ylab = "Density"
+     , xlab = "Sensory Strength"
+     , cex.lab = 1.3
+     )
+lines(x, y.signal, col = "firebrick4", lwd = 4)
+abline(v = 1, lwd = 4, col = "darkgreen")
+text(-2, .35, "Stimulus absent", cex = 1.3)
+text(3.5, .35, "Stimulus present", cex = 1.3)
+# make.poly(1, 5, mu = 1.5, col = adjustcolor("firebrick", .3))
+```
+
+---
+
+### SDT model predictions for H, M, F, C
+
+What corresponds to the probability of hit?
+
+```{r echo = F, fig.asp = .6, fig.width=9}
+par(mar = c(3,3,3,1), mgp = c(2,.7,0), cex = 1.5)
+x <- seq(-3, 5, .01)
+y.noise <- dnorm(x)
+y.signal <- dnorm(x, 1.5)
+
+plot(x, y.noise
+     , type = "l", lwd = 4
+     , xlim = range(x)
+     , frame.plot = F
+     , ylab = "Density"
+     , xlab = "Sensory Strength"
+     , cex.lab = 1.3
+     )
+lines(x, y.signal, col = "firebrick4", lwd = 4)
+abline(v = 1, lwd = 4, col = "darkgreen")
+text(-2, .35, "Stimulus absent", cex = 1.2)
+text(3.5, .35, "Stimulus present", cex = 1.2)
+make.poly(1, 5, mu = 1.5, col = adjustcolor("firebrick", .3))
+```
+
+Area under the curve!
+
+---
+
+### SDT model predictions for H, M, F, C
+
+What corresponds to the probability of miss?
+
+```{r echo = F, fig.asp = .6, fig.width=9}
+par(mar = c(3,3,3,1), mgp = c(2,.7,0), cex = 1.5)
+x <- seq(-3, 5, .01)
+y.noise <- dnorm(x)
+y.signal <- dnorm(x, 1.5)
+
+plot(x, y.noise
+     , type = "l", lwd = 4
+     , xlim = range(x)
+     , frame.plot = F
+     , ylab = "Density"
+     , xlab = "Sensory Strength"
+     , cex.lab = 1.3
+     )
+lines(x, y.signal, col = "firebrick4", lwd = 4)
+abline(v = 1, lwd = 4, col = "darkgreen")
+text(-2, .35, "Stimulus absent", cex = 1.2)
+text(3.5, .35, "Stimulus present", cex = 1.2)
+make.poly(-3, 1, mu = 1.5, col = adjustcolor("firebrick", .3))
+```
+
+---
+
+### SDT model predictions for H, M, F, C
+
+What corresponds to the probability of false alarm?
+
+```{r echo = F, fig.asp = .6, fig.width=9}
+par(mar = c(3,3,3,1), mgp = c(2,.7,0), cex = 1.5)
+x <- seq(-3, 5, .01)
+y.noise <- dnorm(x)
+y.signal <- dnorm(x, 1.5)
+
+plot(x, y.noise
+     , type = "l", lwd = 4
+     , xlim = range(x)
+     , frame.plot = F
+     , ylab = "Density"
+     , xlab = "Sensory Strength"
+     , cex.lab = 1.3
+     )
+lines(x, y.signal, col = "firebrick4", lwd = 4)
+abline(v = 1, lwd = 4, col = "darkgreen")
+text(-2, .35, "Stimulus absent", cex = 1.2)
+text(3.5, .35, "Stimulus present", cex = 1.2)
+make.poly(1, 5, mu = 0, col = adjustcolor(1, .3))
+```
+
+---
+
+### SDT model predictions for H, M, F, C
+
+What corresponds to the probability of correct rejection?
+
+```{r echo = F, fig.asp = .6, fig.width=9}
+par(mar = c(3,3,3,1), mgp = c(2,.7,0), cex = 1.5)
+x <- seq(-3, 5, .01)
+y.noise <- dnorm(x)
+y.signal <- dnorm(x, 1.5)
+
+plot(x, y.noise
+     , type = "l", lwd = 4
+     , xlim = range(x)
+     , frame.plot = F
+     , ylab = "Density"
+     , xlab = "Sensory Strength"
+     , cex.lab = 1.3
+     )
+lines(x, y.signal, col = "firebrick4", lwd = 4)
+abline(v = 1, lwd = 4, col = "darkgreen")
+text(-2, .35, "Stimulus absent", cex = 1.2)
+text(3.5, .35, "Stimulus present", cex = 1.2)
+make.poly(-3, 1, mu = 0, col = adjustcolor(1, .3))
+```
+
+---
+
+### SDT model equations
+
+```{r echo = F, fig.asp = .5, fig.width=6}
+par(mar = c(3,3,.2,1), mgp = c(2,.7,0), cex = 1.5)
+x <- seq(-3, 5, .01)
+y.noise <- dnorm(x)
+y.signal <- dnorm(x, 1.5)
+
+plot(x, y.noise
+     , type = "l", lwd = 4
+     , xlim = range(x)
+     , frame.plot = F
+     , ylab = "Density"
+     , xlab = "Sensory Strength"
+     , cex.lab = 1.3
+     )
+lines(x, y.signal, col = "firebrick4", lwd = 4)
+abline(v = 1, lwd = 4, col = "darkgreen")
+# text(-2, .35, "Stimulus absent", cex = 1.3)
+# text(3.5, .35, "Stimulus present", cex = 1.3)
+# make.poly(1, 5, mu = 1.5, col = adjustcolor("firebrick", .3))
+```
+
+```{r echo = T}
+c <- 0.5; dprime = 1 
+
+pnorm(c, mean = dprime, sd = 1)
+pnorm(c - dprime, mean = 0, sd = 1)
+```
+
+
+---
+
+### SDT model equations
+
+```{r echo = F, fig.asp = .5, fig.width=6}
+par(mar = c(3,3,.2,1), mgp = c(2,.7,0), cex = 1.5)
+x <- seq(-3, 5, .01)
+y.noise <- dnorm(x)
+y.signal <- dnorm(x, 1.5)
+
+plot(x, y.noise
+     , type = "l", lwd = 4
+     , xlim = range(x)
+     , frame.plot = F
+     , ylab = "Density"
+     , xlab = "Sensory Strength"
+     , cex.lab = 1.3
+     )
+lines(x, y.signal, col = "firebrick4", lwd = 4)
+abline(v = 1, lwd = 4, col = "darkgreen")
+# text(-2, .35, "Stimulus absent", cex = 1.3)
+# text(3.5, .35, "Stimulus present", cex = 1.3)
+# make.poly(1, 5, mu = 1.5, col = adjustcolor("firebrick", .3))
+```
+
+**Equations for hits, $p_1$, and false alarms, $p_2$:**
+
+$$
+\begin{align}
+p_1 = p(\text{"Signal"}~|~\text{Signal}) & = 1 - \Phi(c - d'), \\
+p_2 = p(\text{"Signal"}~|~\text{Noise}) & = 1 - \Phi(c)
+\end{align}
+$$
+
+$\Phi =$ CDF of a standard normal.
+
+---
+
+### SDT in `brms`
+
+Based on the tutorial by Matti Vuorre: [https://vuorre.com/posts/sdt-regression/index.html](https://vuorre.com/posts/sdt-regression/index.html)
+
+--
+- 48 participants studied a list of 200 words
+- Participants were tested with 200 new and 200 old words.
+--
+
+- 6-point Likert item (1: “sure new”, 2: “maybe new”, 3: “guess new”, 4: “guess old”, 5: “maybe old”, 6: “sure old”).
+- For now, we bin the rating responses to binary “new” (1-3) and “old” (4-6) responses.
+--
+
+```{r echo = T}
+data(roc6, package = "MPTinR")
+```
+
+```{r}
+dat <- tibble(roc6) |>
+  filter(exp == "Koen-2013_immediate") |>
+  separate(id, c("id", "exp2"), sep = ":") |>
+  select(-exp, -exp2) |>
+  pivot_longer(-id, values_to = "n") |>
+  separate(name, into = c("stimulus", "response")) |>
+  mutate(
+    pid = fct_inorder(factor(id)),
+    stimulus = factor(
+      stimulus,
+      levels = c("NEW", "OLD"),
+      labels = c("New", "Old")
+    ),
+    response = factor(
+      response,
+      levels = c("3new", "2new", "1new", "1old", "2old", "3old"),
+      labels = 1:6
+    ) |>
+      as.integer(),
+    .keep = "unused",
+    .before = 1
+  )
+
+# Convert to binary responses for part 1
+dat <- dat |>
+  mutate(
+    response = if_else(response %in% 1:3, "New", "Old") |>
+      factor()
+  )
+
+# Unaggregate and add trial number to clarify data structure
+dat <- uncount(dat, n) |>
+  mutate(trial = 1:n(), .by = pid, .after = 1)
+```
+
+---
+
+```{r sdt-brms, echo = T, eval = F}
+fit_glmm <- brm(
+  response ~ stimulus + (stimulus | pid),
+  family = bernoulli(link = "probit"),
+  data = dat
+)
+```
+
+---
+layout:false
+class: middle, inverse, center
+
+# Drift-Diffusion Model
+
+---
+layout: true
+
+### Drift-Diffusion Model
+
+---
+
+```{r, out.width = "40%", out.extra = 'id="zoom-margin"'}
+include_graphics("src/brightness.png")
+```
+
+Example: Brightness discrimination task (Ratcliff & Rouder, 1998)
+
+
+--
+
+- N = 3, K = 8000
+- Manipulated the brightness and response urgency
+--
+
+- Manipulations affect accuracy and response time!
+
+---
+
+```{r, out.width = "70%", out.extra = 'id="zoom-margin"'}
+include_graphics("src/ddm.png")
+```
+
+--
+
+Parameters $\tau$ (non-decision time), $\beta$ (starting point), $\alpha$ (boundary separation), and $\nu$ (drift rate).
+
+---
+class:medium-font
+
+```{r, out.width = "75%", out.extra = 'id="zoom-margin"'}
+include_graphics("src/rt_ddm.gif")
+```
+
+Changes in $\tau$ (non-decision time), $\beta$ (starting point), $\alpha$ (boundary separation), and $\nu$ (drift rate).
+
+
+---
+layout:true
+class:medium-font
+
+### DDM in `brms`
+
+---
+
+Based on the tutorial by Henrik Singmann: [http://singmann.org/wiener-model-analysis-with-brms-part-i/](http://singmann.org/wiener-model-analysis-with-brms-part-i/)
+
+--
+
+- Data from Wagenmakers, Ratcliff, Gomez, & McKoon (2008, Experiment 1)
+--
+
+- N=17 participants, lexical decision task: Is the presented string a word or non-word
+--
+
+- Speed or accuracy emphasis instructions in different experimental blocks
+--
+
+```{r echo = T}
+data(speed_acc, package = "rtdists")
+```
+```{r}
+speed_acc <- droplevels(speed_acc[!speed_acc$censor,]) # remove extreme RTs
+speed_acc <- droplevels(speed_acc[ speed_acc$frequency %in% 
+                                     c("high", "nw_high"),])
+speed_acc$response2 <- as.numeric(speed_acc$response)-1
+```
+
+---
+
+```{r echo = T, eval = F}
+formula <- bf(rt | dec(response2) ~ 0 + condition:frequency + 
+                (0 + condition:frequency|p|id), 
+               bs ~ 0 + condition + (0 + condition|p|id), 
+               ndt ~ 0 + condition + (0 + condition|p|id),
+               bias ~ 0 + condition + (0 + condition|p|id))
+```
+
+--
+
+```{r echo = T, eval = F}
+fit_wiener <- brm(formula, 
+                  data = speed_acc,
+                  family = wiener(link_bs = "identity", 
+                                  link_ndt = "identity",
+                                  link_bias = "identity"),
+                  prior = prior, inits = initfun,
+                  iter = 1000, warmup = 500, 
+                  chains = 4, cores = 4, 
+                  control = list(max_treedepth = 15))
+```
+
+---
+layout:false
+class: middle, inverse, center
+
+# Further Topics
+
+---
+
+### Power Analysis for Bayesians?
+
+- What is the goal of power analysis?
+--
+
+- Problem for Bayesians?
+--
+
+```{r, out.width = "80%", out.extra = 'id="zoom-margin"'}
+include_graphics("src/OptionalStopping.png")
+```
+
+---
+
+### Power Analysis for Bayesians?
+
+- Bayesian Design Analysis
+- Goal: Making studies more informative
+
+```{r, out.width = "80%", out.extra = 'id="zoom-margin"'}
+include_graphics("src/BDATutorial.png")
+```
+
+---
+
+### Power Analysis for Bayesians?
+
+- Bayesian Design Analysis
+- Goal: Making studies more informative
+
+```{r, out.width = "80%", out.extra = 'id="zoom-margin"'}
+include_graphics("src/BDA.png")
+```
+
+---
+
+### Ordinal Models in `brms`
+
+```{r, out.width = "80%", out.extra = 'id="zoom-margin"'}
+include_graphics("src/ordinal.png")
+```
+
+---
+### Ordinal Models in `brms`
+
+Tutorial paper and other materials are available here:
+
+[https://vuorre.com/brms-workshop/posts/ordinal/](https://vuorre.com/brms-workshop/posts/ordinal/)
+
+---
+layout:false
+class: inverse, middle, center
+
+:)
