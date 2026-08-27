@@ -92,6 +92,8 @@ pnorm(450,mean=500,sd=50)
 pnorm(550,mean=500,sd=50)-pnorm(450,mean=500,sd=50)
 ```
 
+For a continuous variable, $Prob(450<X<550)$ and $Prob(450\leq X\leq 550)$ lead to the same probability.
+
 # Exercise 5
 
 Given a normal random variable X with mean 500 and variance $50^2$, 
@@ -104,7 +106,7 @@ Given a normal random variable X with mean 500 and variance $50^2$,
 
 ```{r echo=TRUE}
 qnorm(0.80,mean=500,sd=50)
-qnorm(0.30,mean=500,sd=50)
+qnorm(0.30,mean=500,sd=50, lower.tail = F)
 
 qnorm(0.975,mean=500,sd=50)
 qnorm(0.025,mean=500,sd=50)
