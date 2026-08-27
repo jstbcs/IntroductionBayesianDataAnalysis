@@ -1,0 +1,17 @@
+# Additional resources
+
+## Preregistration
+
+Example from Day 1: https://osf.io/5zp7q/overview
+
+This one hs a particularly nice justification of priors (Table C1): https://osf.io/ts9vf/files/ksmjg
+
+## Tutorials in brms
+
+GAMs in brms: https://michael-franke.github.io/Bayesian-Regression/practice-sheets/10b-GAMs.html
+
+Poisson Regression in brms: https://compass.onlinelibrary.wiley.com/doi/full/10.1111/lnc3.12439
+
+Mixture models in non-brms: https://www.zora.uzh.ch/server/api/core/bitstreams/96b99f00-9251-4e50-a5df-4af47662fcbc/content
+
+Bayesian meta-analysis in brms: https://solomonkurz.netlify.app/blog/bayesian-meta-analysis/
