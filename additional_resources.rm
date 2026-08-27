@@ -15,3 +15,11 @@ Poisson Regression in brms: https://compass.onlinelibrary.wiley.com/doi/full/10.
 Mixture models in non-brms: https://www.zora.uzh.ch/server/api/core/bitstreams/96b99f00-9251-4e50-a5df-4af47662fcbc/content
 
 Bayesian meta-analysis in brms: https://solomonkurz.netlify.app/blog/bayesian-meta-analysis/
+
+## Full analysis scripts
+
+The anlyses for this paper were done in brms: https://journals.sagepub.com/doi/pdf/10.1177/20416695221109300
+scripts are on OSF (link in the paper)
+
+Drift-diffusion model analysis in brms: https://github.com/mdllz/con-diffusion
+The analyses are integrated into the RMarkdown manuscript
