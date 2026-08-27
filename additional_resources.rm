@@ -23,3 +23,9 @@ scripts are on OSF (link in the paper)
 
 Drift-diffusion model analysis in brms: https://github.com/mdllz/con-diffusion
 The analyses are integrated into the RMarkdown manuscript
+
+## Equivalence testing
+
+Why maybe not do it: https://www.researchgate.net/profile/Richard-Morey/publication/51519224_Bayes_Factor_Approaches_for_Testing_Interval_Null_Hypotheses/links/0fcfd50f05f1be35d2000000/Bayes-Factor-Approaches-for-Testing-Interval-Null-Hypotheses.pdf
+
+But also what is ROPE: https://easystats.github.io/bayestestR/articles/region_of_practical_equivalence.html
